@@ -1,0 +1,171 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--rule) transparent;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background-color: var(--paper);
+  /* site.yaml 的 background，由 BaseLayout 注入 */
+  background-image: var(--bg-image, none);
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  font-size: inherit;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+
+::selection {
+  color: var(--ink);
+  background: var(--sakura);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * 日历类版块（日历、今天、Deadline）列表上方的提示和空列表的说明。
+ * 它们常在 server island 里渲染，组件自带的样式不一定跟着岛屿送到，所以放在全局
+ */
+.feed-notice,
+.feed-empty {
+  font: var(--text-sm) / 1.5 var(--label);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.feed-notice + * {
+  margin-block-start: var(--space-2);
+}
+
+.feed-notice[data-kind='error'] {
+  color: var(--red);
+}
+
+/*
+ * 列表行的高亮（搜索结果、分类面板里的链接）：左边落下一片花瓣，内容往右让 6px，底下铺淡樱色。
+ * 什么时候亮由组件决定：把 --lit 设成 1（选中、悬停、键盘焦点……）
+ */
+.petal-row {
+  --lit: 0;
+
+  position: relative;
+  isolation: isolate;
+}
+
+.petal-row > * {
+  translate: calc(var(--lit) * 6px) 0;
+  transition: translate var(--dur-hover) var(--spring);
+}
+
+.petal-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--sakura-wash);
+  opacity: var(--lit);
+  transition: opacity var(--dur-hover) var(--ease-out);
+}
+
+.petal-row::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 1px;
+  inline-size: 7px;
+  block-size: 9px;
+  margin-block-start: -4.5px;
+  background: var(--sakura-deep);
+  mask: var(--petal) center / contain no-repeat;
+  rotate: 90deg;
+  scale: calc(0.4 + var(--lit) * 0.6);
+  opacity: var(--lit);
+  transition:
+    scale var(--dur-hover) var(--spring),
+    opacity var(--dur-fast) linear;
+}
+
+/* 主题切换的交叉淡化（View Transitions，见 client/theme.ts） */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur-theme);
+  animation-timing-function: var(--ease-in-out);
+}
+
+/* 减少动态效果：状态照样切换（底色照样铺上、面板照样出现），只是不再有过程 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

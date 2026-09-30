@@ -1,0 +1,24 @@
+# 依赖与构建产物
+node_modules/
+dist/
+.astro/
+coverage/
+test-results/
+playwright-report/
+
+# 环境变量：包含 API Key 等敏感信息，不要入库
+.env
+.env.*
+!.env.example
+
+# 旧仓库的只读参考副本，不属于新项目
+_source/
+
+# 运行时数据：calendar-users.json 里是各用户的日历订阅地址（等同凭据）
+data/
+
+# Python 服务运行时数据（迁移后生效）
+__pycache__/
+services/*/data/**/cache.json
+services/*/data/*.tmp
+services/ical-proxy/data/users.json

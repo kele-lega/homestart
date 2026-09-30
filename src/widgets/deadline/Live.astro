@@ -1,0 +1,57 @@
+---
+import CalendarNotice from '../../components/CalendarNotice.astro';
+import { userFrom } from '../../core/api';
+import { loadConfig } from '../../core/runtime';
+import { loadWidgetData } from '../../core/widget-data';
+import deadline from './widget';
+
+// server island：页面先显示 View.astro 里的骨架，这里的结果到达后替换它。样式都在 View.astro
+interface Props {
+  id: string;
+}
+
+const result = await loadWidgetData(deadline, Astro.props.id, {
+  loadConfig,
+  user: userFrom(Astro.request.headers, Astro.locals.auth),
+  signal: Astro.request.signal,
+  logError: (message) => Astro.logger.error(message),
+});
+const rows = result.ok && result.data.status === 'ok' ? result.data.data : [];
+---
+
+{
+  result.ok ? (
+    <>
+      <CalendarNotice view={result.data} />
+      {rows.length > 0 ? (
+        <ul class="dl-list" role="list">
+          {rows.map((row) => (
+            <li class="dl" data-urgent={row.note ? '' : undefined}>
+              <span class="dl-left">
+                <b>{row.daysLeft}</b>天<span class="visually-hidden">后截止</span>
+              </span>
+              <span class="dl-name">
+                {row.title}
+                {row.note && (
+                  <span class="dl-note">
+                    <span aria-hidden="true">← </span>
+                    {row.note}
+                  </span>
+                )}
+              </span>
+              <time class="dl-date" datetime={row.date}>
+                {row.dateText}
+              </time>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        result.data.status === 'ok' && <p class="feed-empty">接下来没有要截止的事项</p>
+      )}
+    </>
+  ) : (
+    <p class="feed-notice" data-kind="error">
+      Deadline 暂时不可用
+    </p>
+  )
+}

@@ -1,0 +1,82 @@
+---
+import CalendarNotice from '../../components/CalendarNotice.astro';
+import FrameHead from '../../components/FrameHead.astro';
+import { userFrom } from '../../core/api';
+import { loadConfig } from '../../core/runtime';
+import type { WidgetHeading } from '../../core/widget';
+import { loadWidgetData } from '../../core/widget-data';
+import { isDone, nextIndex } from './progress';
+import agenda from './widget';
+
+// server island：页面先显示 View.astro 里的骨架，这里的结果到达后替换它。样式都在 View.astro。
+// 栏目头的「N 件日程」要等数据，所以栏目头也在这里画
+interface Props {
+  id: string;
+  heading?: WidgetHeading | undefined;
+}
+
+const { id, heading } = Astro.props;
+const result = await loadWidgetData(agenda, id, {
+  loadConfig,
+  user: userFrom(Astro.request.headers, Astro.locals.auth),
+  signal: Astro.request.signal,
+  logError: (message) => Astro.logger.error(message),
+});
+const entries = result.ok && result.data.status === 'ok' ? result.data.data : [];
+// 首屏就标好哪件过去了、哪件是下一件；之后由 View.astro 里的脚本每分钟更新
+const now = Date.now();
+const next = nextIndex(
+  entries.map((entry) => entry.timing),
+  now,
+);
+const stateOf = (index: number): 'done' | 'next' | undefined => {
+  const { timing } = entries[index]!;
+  if (index === next) return 'next';
+  return timing && isDone(timing, now) ? 'done' : undefined;
+};
+---
+
+{heading && <FrameHead heading={heading} sub={entries.length > 0 ? `${entries.length} 件日程` : undefined} />}
+{
+  result.ok ? (
+    <>
+      <CalendarNotice view={result.data} />
+      {entries.length > 0 ? (
+        <agenda-list>
+          <ol class="ev-list" role="list">
+            {entries.map((entry, index) => {
+              const meta = [entry.until && `至 ${entry.until}`, entry.location].filter(Boolean).join(' · ');
+              return (
+                <li
+                  class="ev"
+                  data-state={stateOf(index)}
+                  data-start={entry.timing?.start}
+                  data-end={entry.timing?.end}
+                >
+                  <span class="ev-time">
+                    {entry.until ? (
+                      <>
+                        <span aria-hidden="true">{entry.time}</span>
+                        <span class="visually-hidden">接前一天</span>
+                      </>
+                    ) : (
+                      entry.time
+                    )}
+                  </span>
+                  <span class="ev-name">{entry.title}</span>
+                  {meta && <span class="ev-place">{meta}</span>}
+                </li>
+              );
+            })}
+          </ol>
+        </agenda-list>
+      ) : (
+        result.data.status === 'ok' && <p class="feed-empty">今天没有日程</p>
+      )}
+    </>
+  ) : (
+    <p class="feed-notice" data-kind="error">
+      今天的日程暂时不可用
+    </p>
+  )
+}

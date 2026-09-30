@@ -1,0 +1,41 @@
+---
+import type { AppConfig } from '../core/config';
+import type { ViewContext } from '../core/widget';
+import { localDateKey } from '../lib/zoned-time';
+import PageBar from './PageBar.astro';
+import Zone from './Zone.astro';
+import './zones.css';
+import './frame.css';
+import './collapse.css';
+
+interface Props {
+  readonly config: AppConfig;
+}
+
+const { layout, site, links } = Astro.props.config;
+const ctx: ViewContext = { site, links };
+// 页面按这一天渲染；浏览器端过了零点会整页刷新（client/day-rollover），渲染时刻用来校正浏览器的时钟
+const renderedAt = Date.now();
+const today = localDateKey(renderedAt, site.timezone);
+const style = {
+  '--page-areas': layout.page.areas,
+  '--page-columns': layout.page.columns,
+  '--page-rows': layout.page.rows,
+};
+---
+
+<div class="l-shell" data-today={today} data-timezone={site.timezone} data-rendered-at={renderedAt}>
+  <PageBar title={site.title} today={today} />
+  <main
+    class="l-page"
+    data-dividers={layout.page.dividers === 'none' ? undefined : layout.page.dividers}
+    style={style}
+  >
+    {layout.zones.map((zone) => <Zone zone={zone} ctx={ctx} />)}
+  </main>
+</div>
+
+<script>
+  import '../client/disclosure';
+  import '../client/day-rollover';
+</script>

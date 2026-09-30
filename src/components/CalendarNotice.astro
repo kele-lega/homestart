@@ -1,0 +1,18 @@
+---
+/** 日历类版块列表上方的一行提示：未订阅、读取失败、暂用旧数据。订阅正常时什么都不画。样式在 styles/base.css */
+import { feedNotice, type FeedView } from '../lib/feed-view';
+
+interface Props {
+  readonly view: FeedView<unknown>;
+}
+
+const notice = feedNotice(Astro.props.view);
+---
+
+{
+  notice && (
+    <p class="feed-notice" data-kind={notice.kind}>
+      {notice.text}
+    </p>
+  )
+}

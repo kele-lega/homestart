@@ -1,0 +1,101 @@
+/*
+ * 设计变量：活页手帐的纸、墨和细线，标本馆的字体。组件只引用这里的变量。
+ * 颜色统一用 light-dark(浅色值, 深色值) 写在一处，两套主题不会各自漂移；
+ * 当前主题由 <html data-theme="light|dark|system"> 决定（见 lib/theme.ts）。
+ */
+:root {
+  color-scheme: light;
+
+  /* 纸与墨：paper 页面，desk 活页孔里露出的桌面，surface 浮起的面板，rule 细线 */
+  --paper: light-dark(#fbf8f1, #151a2e);
+  --desk: light-dark(#e9e2d4, #0c1020);
+  --surface: light-dark(#fffcf7, #1b2138);
+  --ink: light-dark(#1d2738, #efe6d2);
+  --ink-2: light-dark(#465267, #bcc0cd);
+  --ink-3: light-dark(#66707f, #9098ad);
+  --rule: light-dark(#d8d1c3, #2d3453);
+  --rule-soft: color-mix(in srgb, var(--rule) 55%, transparent);
+  --skeleton: light-dark(#ebe6dc, #20263f);
+
+  /* 蓝色表示数据含义（周末、节日、截止日、下一件事），红色是红笔批注（今天、最急的一条） */
+  --blue: light-dark(#2a7086, #7cc3d6);
+  --red: light-dark(#c93d58, #f38da2);
+
+  /* 分类色，由 tones.css 按 tone 取用 */
+  --t1: light-dark(#2a7086, #7cc3d6);
+  --t2: light-dark(#5566a8, #a3b1f0);
+  --t3: light-dark(#8b6a33, #e0b56e);
+  --t4: light-dark(#4a7a58, #92cfa2);
+  --t5: light-dark(#93578a, #e2a3d4);
+
+  /* 樱花色只出现在「你碰到的地方」：悬停、展开、聚焦 */
+  --sakura: light-dark(#f4c6d3, #8c5d78);
+  --sakura-deep: light-dark(#c95a7b, #f0a6bd);
+  --sakura-wash: light-dark(#fcf0f3, #29273b);
+  /* 页眉那朵小花 */
+  --mark-petal: light-dark(#efb3c5, #b98aa1);
+  --mark-heart: light-dark(#c95a7b, #f5c6d3);
+  /* 花瓣形状，只当遮罩用，颜色来自 background */
+  --petal: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-6 -16 12 16'><path d='M0 0C-5-4-6.5-11-3.2-15.5L0-13.4L3.2-15.5C6.5-11 5-4 0 0Z'/></svg>");
+
+  /* 浮起的面板（搜索结果、分类链接） */
+  --lift:
+    0 12px 28px -14px light-dark(rgb(29 39 56 / 0.3), rgb(0 0 0 / 0.6)),
+    0 2px 6px -3px light-dark(rgb(29 39 56 / 0.14), rgb(0 0 0 / 0.45));
+
+  /* 线条：版块顶上的粗线、栏目之间的细线 */
+  --rule-heavy: 3px solid var(--ink);
+  --rule-thin: 1px solid var(--rule);
+
+  /* 字体：数字用 Georgia 旧式数字，标签用仿宋，正文用雅黑；楷体只留给红笔批注 */
+  --font-body: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', system-ui,
+    sans-serif;
+  --serif: Georgia, FangSong, STFangsong, serif;
+  --num: Georgia, 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --label: FangSong, STFangsong, serif;
+  --pen: KaiTi, STKaiti, serif;
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+  --text-2xs: 0.625rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1rem;
+  --text-xl: 1.0625rem;
+  --text-2xl: 1.25rem;
+
+  /* 间距 */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  /* 动效：悬停 120–180ms，展开 280ms、收起 220ms；只动 transform / opacity / clip-path，最多一点点回弹 */
+  --dur-fast: 120ms;
+  --dur-hover: 160ms;
+  --dur-draw: 180ms;
+  --dur-open: 280ms;
+  --dur-close: 220ms;
+  --dur-theme: 360ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --spring: cubic-bezier(0.3, 1.3, 0.6, 1);
+
+  /* 层级：浮层只需高于后面的版块 */
+  --z-popover: 20;
+}
+
+/* data-theme：light / dark 固定，system（或缺省）跟随系统 */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}

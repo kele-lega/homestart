@@ -1,0 +1,36 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import { groupLinks } from './groups';
+import LinkGroups from './LinkGroups.svelte';
+import type { LinkGroupsOptions } from './widget';
+
+type Props = WidgetViewProps<LinkGroupsOptions>;
+
+const { id, links } = Astro.props;
+const groups = groupLinks(links);
+---
+
+{
+  groups.length > 0 ? (
+    <LinkGroups client:load id={id} groups={groups} />
+  ) : (
+    <p class="empty">
+      在 <code>config/links.yaml</code> 里添加 <code>categories</code>，并给链接填上 <code>category</code>，分类导航就会出现在这里。
+    </p>
+  )
+}
+
+<style>
+  .empty {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .empty code {
+    padding: 0.05em 0.35em;
+    font: 0.92em var(--mono);
+    color: var(--ink);
+    border: var(--rule-thin);
+  }
+</style>

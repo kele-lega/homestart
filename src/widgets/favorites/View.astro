@@ -1,0 +1,174 @@
+---
+import FrameHead from '../../components/FrameHead.astro';
+import SiteIcon from '../../components/SiteIcon.svelte';
+import type { WidgetViewProps } from '../../core/widget';
+import type { FavoritesOptions } from './widget';
+
+type Props = WidgetViewProps<FavoritesOptions>;
+
+const { links, heading } = Astro.props;
+const favorites = links.links.filter((link) => link.favorite);
+/** 格子右上角的页码：01、02… */
+const pageNo = (index: number) => String(index + 1).padStart(2, '0');
+---
+
+{heading && <FrameHead heading={heading} sub={favorites.length > 0 ? `${favorites.length} 个` : undefined} />}
+{
+  favorites.length > 0 ? (
+    <ul class="favorites" role="list">
+      {favorites.map((link, index) => (
+        <li>
+          <a class="tile" href={link.url} target="_blank" rel="noopener noreferrer" title={link.description}>
+            <SiteIcon name={link.name} icon={link.icon} iconDark={link.iconDark} size="md" />
+            <span class="name">{link.name}</span>
+            <span class="no" aria-hidden="true">{pageNo(index)}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">
+      在 <code>config/links.yaml</code> 里给链接加上 <code>favorite: true</code>，它就会出现在这里。
+    </p>
+  )
+}
+
+<style>
+  /* 索引页式的细线表格：外框的上、左两条线画在列表上，每一格只画自己的右、下两条 */
+  .favorites {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--rule-thin);
+    border-inline-start: var(--rule-thin);
+  }
+
+  .tile {
+    position: relative;
+    display: grid;
+    gap: 1.75rem;
+    padding: 1.25rem 1rem 1rem;
+    border-inline-end: var(--rule-thin);
+    border-block-end: var(--rule-thin);
+    isolation: isolate;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 格子挨着格子，焦点框往里收，免得压到隔壁格的细线 */
+  .tile:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* 悬停底色放在伪元素上，只过渡 opacity */
+  .tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--sakura-wash);
+    opacity: 0;
+    transition: opacity var(--dur-hover) var(--ease-out);
+  }
+
+  .tile :global(.site-icon) {
+    transition: translate var(--dur-hover) var(--spring);
+  }
+
+  /* 名字只占一行，放不下用省略号收尾；读屏照样读完整名字 */
+  .name {
+    position: relative;
+    justify-self: start;
+    max-inline-size: 100%;
+    padding-block-end: 0.25rem;
+    overflow: hidden;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* 名字下划线从左往右画出来 */
+  .name::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    block-size: 2px;
+    background: var(--sakura-deep);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-hover) var(--ease-out);
+  }
+
+  .no {
+    position: absolute;
+    inset-block-start: 0.875rem;
+    inset-inline-end: 0.75rem;
+    font: italic var(--text-xs) / 1 var(--serif);
+    color: var(--ink-3);
+  }
+
+  .no::before {
+    content: 'p.';
+  }
+
+  /* 悬停只给有鼠标的设备；键盘 Tab 到格子上也是同样的反馈 */
+  @media (hover: hover) {
+    .tile:hover::before {
+      opacity: 1;
+    }
+
+    .tile:hover :global(.site-icon) {
+      translate: 0 -2px;
+    }
+
+    .tile:hover .name::after {
+      transform: none;
+    }
+  }
+
+  .tile:focus-visible::before,
+  .tile:active::before {
+    opacity: 1;
+  }
+
+  .tile:focus-visible :global(.site-icon) {
+    translate: 0 -2px;
+  }
+
+  .tile:focus-visible .name::after {
+    transform: none;
+  }
+
+  /* 按卡片宽度而不是屏幕宽度切换：格子窄时图标和名字居中叠放，页码收起 */
+  @container widget (inline-size <= 30rem) {
+    .tile {
+      justify-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 0.25rem 0.5rem;
+    }
+
+    .name {
+      justify-self: center;
+      font-size: 0.6875rem;
+    }
+
+    .no {
+      display: none;
+    }
+  }
+
+  .empty {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .empty code {
+    padding: 0.05em 0.35em;
+    font: 0.92em var(--mono);
+    color: var(--ink);
+    border: var(--rule-thin);
+  }
+</style>

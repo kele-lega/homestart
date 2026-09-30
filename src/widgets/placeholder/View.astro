@@ -1,0 +1,35 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import type { PlaceholderOptions } from './widget';
+
+type Props = WidgetViewProps<PlaceholderOptions>;
+
+const { options } = Astro.props;
+const WIDTHS = ['92%', '74%', '84%', '62%', '88%', '70%'];
+---
+
+<div class="bars" aria-hidden="true">
+  {Array.from({ length: options.lines }, (_, i) => <span class="bar" style={{ width: WIDTHS[i % WIDTHS.length] }} />)}
+</div>
+{options.note && <p class="note">{options.note}</p>}
+
+<style>
+  /* 还没做好的板块：几条平直的色块，和纸面上的细线一样不带圆角 */
+  .bars {
+    display: grid;
+    gap: 0.875rem;
+    padding-block: 0.25rem;
+  }
+
+  .bar {
+    display: block;
+    block-size: 0.625rem;
+    background: var(--skeleton);
+  }
+
+  .note {
+    margin-block-start: var(--space-3);
+    font: var(--text-xs) / 1.5 var(--label);
+    color: var(--ink-3);
+  }
+</style>

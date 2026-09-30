@@ -1,0 +1,42 @@
+---
+import type { SiteConfig } from '../core/site';
+import { THEMES, THEME_STORAGE_KEY } from '../lib/theme';
+import '../styles/tokens.css';
+import '../styles/tones.css';
+import '../styles/base.css';
+
+interface Props {
+  readonly site: Pick<SiteConfig, 'title' | 'lang' | 'favicon'> & Partial<SiteConfig>;
+}
+
+const { site } = Astro.props;
+// background 已由 site.yaml 的 schema 限制为站内路径，可以安全放进 url()
+const bodyStyle = site.background ? { '--bg-image': `url("${site.background}")` } : undefined;
+---
+
+<!doctype html>
+<html lang={site.lang} data-theme="system">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- 私有门户：点出去的链接、搜索和远程图标都不带本站地址。
+         同源请求照常带上：no-referrer 会让同源 POST 的 Origin 变成 null，被 Astro 的来源校验拒绝 -->
+    <meta name="referrer" content="same-origin" />
+    <title>{site.title}</title>
+    {site.description && <meta name="description" content={site.description} />}
+    <link rel="icon" href={site.favicon} />
+    <!-- 绘制前应用保存的主题，避免先闪一下浅色 -->
+    <script is:inline define:vars={{ themes: THEMES, storageKey: THEME_STORAGE_KEY }}>
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (themes.includes(saved)) document.documentElement.dataset.theme = saved;
+      } catch {
+        // 存储不可用时保持跟随系统
+      }
+    </script>
+  </head>
+  <body style={bodyStyle}>
+    <slot />
+  </body>
+</html>

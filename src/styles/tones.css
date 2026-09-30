@@ -1,0 +1,32 @@
+/*
+ * 色调：layout.yaml / links.yaml 里的 tone 映射成一个 --tone 变量（分类签顶边、签面底色、面板顶边）。
+ * 彩色取活页分类色 t1–t5；neutral / slate 用墨色。与 ToneSchema 一一对应（tests/styles/tones.test.ts）。
+ */
+
+[data-tone='neutral'] {
+  --tone: var(--ink-2);
+}
+
+[data-tone='slate'] {
+  --tone: var(--ink-3);
+}
+
+[data-tone='blue'] {
+  --tone: var(--t1);
+}
+
+[data-tone='purple'] {
+  --tone: var(--t2);
+}
+
+[data-tone='peach'] {
+  --tone: var(--t3);
+}
+
+[data-tone='green'] {
+  --tone: var(--t4);
+}
+
+[data-tone='pink'] {
+  --tone: var(--t5);
+}

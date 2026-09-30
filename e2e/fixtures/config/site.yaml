@@ -1,0 +1,6 @@
+# E2E 专用站点配置：结构与 config/site.yaml 相同
+title: E2E 测试主页
+description: 端到端测试用
+favicon: /favicon.ico
+lang: zh-CN
+timezone: Asia/Shanghai

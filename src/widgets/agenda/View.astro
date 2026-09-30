@@ -1,0 +1,173 @@
+---
+import FrameHead from '../../components/FrameHead.astro';
+import type { WidgetViewProps } from '../../core/widget';
+import Live from './Live.astro';
+import type { AgendaOptions } from './widget';
+
+type Props = WidgetViewProps<AgendaOptions>;
+
+const { id, heading } = Astro.props;
+// 骨架的行数：island 到达前大致占住列表的高度
+const SKELETON_ROWS = 2;
+---
+
+<div class="agenda">
+  <Live server:defer id={id} heading={heading}>
+    <Fragment slot="fallback">
+      {heading && <FrameHead heading={heading} />}
+      <ol class="ev-list" role="list" aria-hidden="true">
+        {
+          Array.from({ length: SKELETON_ROWS }, () => (
+            <li class="ev">
+              <span class="ev-time bone time" />
+              <span class="bone name" />
+              <span class="bone place" />
+            </li>
+          ))
+        }
+      </ol>
+      <span class="visually-hidden">今天的日程加载中</span>
+    </Fragment>
+  </Live>
+</div>
+
+<script>
+  import { isDone, nextIndex, type Timing } from './progress';
+
+  // 每分钟重新标一次：哪件已经过去（变淡）、哪件是下一件（标蓝）。页面过了零点由 client/day-rollover.ts 整页刷新
+  const TICK_MS = 60_000;
+
+  function timingOf(row: HTMLElement): Timing | undefined {
+    const start = Number(row.dataset.start);
+    const end = Number(row.dataset.end);
+    return row.dataset.start && row.dataset.end && Number.isFinite(start) && Number.isFinite(end)
+      ? { start, end }
+      : undefined;
+  }
+
+  class AgendaList extends HTMLElement {
+    #timer: ReturnType<typeof setInterval> | undefined;
+
+    connectedCallback() {
+      this.#update();
+      this.#timer = setInterval(() => this.#update(), TICK_MS);
+    }
+
+    disconnectedCallback() {
+      clearInterval(this.#timer);
+    }
+
+    #update() {
+      const rows = [...this.querySelectorAll<HTMLElement>('.ev')];
+      const timings = rows.map(timingOf);
+      const now = Date.now();
+      const next = nextIndex(timings, now);
+      rows.forEach((row, index) => {
+        const timing = timings[index];
+        const state = index === next ? 'next' : timing && isDone(timing, now) ? 'done' : undefined;
+        if (state) row.dataset.state = state;
+        else delete row.dataset.state;
+      });
+    }
+  }
+
+  if (!customElements.get('agenda-list')) customElements.define('agenda-list', AgendaList);
+</script>
+
+<style>
+  /*
+   * 子弹笔记：空心圆表示日程，下一件涂实、标蓝；已经过去的变淡。时间与事项名按基线对齐。
+   * Live.astro 的内容用 :global 选中；骨架用同样的行结构，岛屿到达前后位置不变
+   */
+  .agenda :global(agenda-list) {
+    display: block;
+  }
+
+  .agenda :global(.ev-list) {
+    padding: 0;
+    list-style: none;
+  }
+
+  .agenda :global(.ev) {
+    display: grid;
+    grid-template-columns: 1.1rem 3.8rem minmax(0, 1fr);
+    column-gap: 0.5rem;
+    align-items: baseline;
+    padding-block: 0.5625rem;
+  }
+
+  .agenda :global(.ev + .ev) {
+    border-top: var(--rule-thin);
+  }
+
+  .agenda :global(.ev)::before {
+    content: '';
+    grid-row: span 2;
+    align-self: start;
+    inline-size: 9px;
+    block-size: 9px;
+    margin-block-start: 0.5rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+  }
+
+  .agenda :global(.ev[data-state='next'])::before {
+    background: var(--blue);
+    border-color: var(--blue);
+  }
+
+  .agenda :global(.ev[data-state='done'])::before {
+    border-color: var(--ink-3);
+  }
+
+  .agenda :global(.ev-time) {
+    grid-row: span 2;
+    font: 400 var(--text-2xl) / 1.2 var(--serif);
+    white-space: nowrap;
+  }
+
+  .agenda :global(.ev[data-state='next'] .ev-time) {
+    color: var(--blue);
+  }
+
+  .agenda :global(.ev-name) {
+    font-size: var(--text-base);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .agenda :global(.ev-place) {
+    grid-column: 3;
+    font: var(--text-xs) / 1.4 var(--num);
+    color: var(--ink-3);
+    overflow-wrap: anywhere;
+  }
+
+  .agenda :global(.ev[data-state='done'] :is(.ev-time, .ev-name)) {
+    color: var(--ink-3);
+  }
+
+  /* 骨架：时间一块、事项名和地点各一条，不做闪烁动画 */
+  .bone {
+    display: block;
+    background: var(--skeleton);
+  }
+
+  .bone.time {
+    inline-size: 2.75rem;
+    block-size: 1.25rem;
+  }
+
+  .bone.name {
+    inline-size: 60%;
+    block-size: 0.875rem;
+    margin-block: 0.1875rem;
+  }
+
+  .bone.place {
+    grid-column: 3;
+    inline-size: 5rem;
+    block-size: 0.75rem;
+    margin-block: 0.125rem;
+  }
+</style>

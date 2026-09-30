@@ -1,0 +1,62 @@
+# 页面布局，三层：Widget 实例 → 区域（zone）→ 页面网格。
+#   widgets：Widget 实例。type 对应 src/widgets/<type>/ 目录，options 由该 Widget 自己校验
+#   zones：区域只负责摆放。items 里的数组表示桌面端合并为一栏
+#     layout：stack 纵向 / grid 等宽多列（columns）/ areas 命名区域（areas + columns）
+#     mobile：flatten 拆开参与整页排序 / block 整体保留 / collapse 整体保留且可折叠
+#     dividers：格子之间画细线，none / columns 竖线 / rows 横线 / both
+#     masthead：报头样式，上方粗细双线、下方一道细线
+#   page.desktop：区域在桌面端的网格；page.mobile.order：手机端从上到下的顺序
+# 新增 Widget：在 src/widgets/ 新建目录，再在这里加一个实例并放进某个区域即可。
+
+widgets:
+  - { id: clock, type: clock, options: { seconds: false, greeting: true, name: 主人 } }
+  - { id: search, type: search }
+  - { id: weather, type: weather, options: { label: 北京, latitude: 39.9, longitude: 116.39 } }
+  # 日历、今天、Deadline 读同一份 ICS 订阅（按登录用户保存，在日历版块底部设置）
+  - { id: calendar, type: calendar }
+  - { id: agenda, type: agenda }
+  - { id: deadline, type: deadline, options: { max: 5, days: 90 } }
+  - { id: favorites, type: favorites, title: 常用网站 }
+  - { id: steam, type: steam }
+  - { id: categories, type: link-groups }
+
+zones:
+  - id: header
+    layout: areas
+    areas: ["clock search weather"]
+    columns: "auto minmax(0, 1fr) auto"
+    mobile: block
+    mobileAreas: ["clock weather", "search search"]
+    mobileColumns: "minmax(0, 1fr) auto"
+    align: center
+    dividers: both
+    masthead: true
+    items: [clock, search, weather]
+
+  - id: side
+    items: [calendar, deadline]
+
+  # 插件区：Steam 卡片按内容大小，不必占满整行
+  - id: main
+    layout: areas
+    areas: ["favorites favorites", "agenda agenda", "steam ."]
+    columns: "minmax(0, 1.35fr) minmax(0, 1fr)"
+    align: start
+    items: [favorites, agenda, steam]
+
+  # 分类导航自己排版（桌面一排索引签、手机一列），区域只给个标题
+  - id: footer
+    title: 分类导航
+    mobile: block
+    items: [categories]
+
+page:
+  desktop:
+    columns: "minmax(21rem, 1fr) minmax(0, 1.44fr)"
+    dividers: columns
+    areas:
+      - "header header"
+      - "side main"
+      - "footer footer"
+  mobile:
+    order: [header, deadline, agenda, favorites, calendar, steam, footer]

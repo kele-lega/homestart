@@ -1,0 +1,60 @@
+/* 版块外框（WidgetFrame）与合并卡片。手机端可折叠区域在 collapse.css */
+
+.l-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 版块：顶上一道粗线，像报纸的栏目头；没有底色和边框，纸面就是背景 */
+.l-frame[data-chrome='card'] {
+  /* 版块内的 Widget 用容器查询适配宽度，而不是看视口 */
+  container: widget / inline-size;
+  padding-top: 0.625rem;
+  border-top: var(--rule-heavy);
+}
+
+/*
+ * 栏目头：栏目名在左，补充说明（数量、日期等）靠右，下面一道细线。
+ * 和正文的间距用外边距而不是外框的 gap：自己画栏目头的 View 把它放在正文里（可能在 server island 里）
+ */
+.l-frame-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
+  padding-bottom: 0.5625rem;
+  border-bottom: var(--rule-thin);
+}
+
+.l-frame-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.l-frame-sub {
+  margin-inline-start: auto;
+  font: var(--text-sm) / 1.4 var(--label);
+  color: var(--ink-2);
+}
+
+.l-frame-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.l-frame-error {
+  font-size: var(--text-sm);
+  color: var(--red);
+  overflow-wrap: anywhere;
+}
+
+/* 合并卡片：桌面端几个版块叠成一栏；手机端 flatten 时拆开，各自参与排序 */
+.l-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--zone-gap);
+  min-width: 0;
+}

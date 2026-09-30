@@ -1,0 +1,46 @@
+---
+import { userFrom } from '../../core/api';
+import { loadConfig } from '../../core/runtime';
+import { loadWidgetData } from '../../core/widget-data';
+import { present } from './present';
+import weather from './widget';
+
+// server island：页面先显示 View.astro 里的骨架，这里的结果到达后替换它。样式都在 View.astro
+interface Props {
+  id: string;
+}
+
+const result = await loadWidgetData(weather, Astro.props.id, {
+  loadConfig,
+  user: userFrom(Astro.request.headers, Astro.locals.auth),
+  signal: Astro.request.signal,
+  logError: (message) => Astro.logger.error(message),
+});
+const view = result.ok ? present(result.data) : undefined;
+// 湿度和降水放一行；两项都没有就整行不显示
+const meta = [view?.humidity && `湿度 ${view.humidity}`, view?.rainChance && `降水 ${view.rainChance}`]
+  .filter(Boolean)
+  .join(' · ');
+---
+
+{
+  view ? (
+    <>
+      <span class="temp">{view.temperature}</span>
+      <span class="condition">{view.condition}</span>
+      {view.range && (
+        <span class="range">
+          <span aria-hidden="true">
+            {view.range.high} / {view.range.low}
+          </span>
+          <span class="visually-hidden">
+            最高 {view.range.high}，最低 {view.range.low}
+          </span>
+        </span>
+      )}
+      {meta && <span class="meta">{meta}</span>}
+    </>
+  ) : (
+    <p class="unavailable">天气暂时不可用</p>
+  )
+}
