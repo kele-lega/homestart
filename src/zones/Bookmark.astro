@@ -1,0 +1,149 @@
+---
+import { initialOf } from '../lib/account-view';
+
+/**
+ * 页顶垂下的书签：登录入口。没登录写「登录」，登录后是一枚印着名字第一个字的小印章，点进个人中心。
+ * 服务端按 locals.auth 直接渲染，不等脚本：翻页快照里就是最终的样子，不会先闪一下「登录」。
+ * 宽屏挂在纸的右上角页边里，不压内容；窄屏收进顶栏右侧，短一些。
+ */
+const auth = Astro.locals.auth;
+const name = auth ? (auth.displayName ?? auth.username) : undefined;
+---
+
+{
+  auth && name ? (
+    <a class="bookmark" href="/account" data-user={auth.username} aria-label={`个人中心（${name}）`} title={name}>
+      <span class="ribbon">
+        <span class="seal" aria-hidden="true">
+          {initialOf(name)}
+        </span>
+      </span>
+    </a>
+  ) : (
+    <a class="bookmark" href="/login" data-user="">
+      <span class="ribbon">
+        <span class="label">登录</span>
+      </span>
+    </a>
+  )
+}
+
+<script>
+  import '../client/bookmark';
+</script>
+
+<style>
+  .bookmark {
+    --drop: 0px;
+
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 1.125rem;
+    z-index: 1;
+    display: block;
+    /* 焦点框画在外层，里面的丝带有剪影，框不会被切掉 */
+    border-radius: 0 0 2px 2px;
+    transform-origin: 50% 0;
+  }
+
+  .ribbon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    inline-size: 1.75rem;
+    block-size: 4.25rem;
+    padding-block-start: 0.875rem;
+    color: var(--ribbon-ink);
+    background: var(--ribbon);
+    /* 下端剪出一个燕尾 */
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 0.5rem), 0 100%);
+    translate: 0 var(--drop);
+    transition: translate var(--dur-hover) var(--spring);
+  }
+
+  .label {
+    font: var(--text-sm) / 1.15 var(--label);
+    letter-spacing: 0.2em;
+    writing-mode: vertical-rl;
+  }
+
+  /* 印章：细边框里一个楷体字，像盖在丝带上的名章 */
+  .seal {
+    display: grid;
+    place-items: center;
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+    font: var(--text-sm) / 1 var(--pen);
+    border: 1px solid color-mix(in srgb, var(--ribbon-ink) 70%, transparent);
+    border-radius: 2px;
+  }
+
+  /* 碰到它时往下多垂一点，像被轻轻拉了一下 */
+  @media (hover: hover) {
+    .bookmark:hover {
+      --drop: 0.375rem;
+    }
+  }
+
+  .bookmark:focus-visible {
+    --drop: 0.375rem;
+  }
+
+  .bookmark:active {
+    --drop: 0.625rem;
+  }
+
+  /* 两个动作都带延迟：要求减少动态效果时整段不加（全局只缩短时长、不清延迟，书签会先藏在页顶外一会儿） */
+  @media (prefers-reduced-motion: no-preference) {
+    /* 翻回首页：页面落定前后书签跟着晃两下 */
+    :global(html[data-turned='back']) .bookmark {
+      animation: bookmark-sway 900ms var(--ease-out) calc(var(--dur-turn) * 0.55) both;
+    }
+
+    /* 刚登录：书签从页顶落下来，最后弹一下 */
+    :global(html[data-arrival='signed-in']) .bookmark {
+      animation: bookmark-drop 720ms var(--spring) calc(var(--dur-turn) * 0.6) both;
+    }
+  }
+
+  @keyframes bookmark-sway {
+    0% {
+      rotate: 0deg;
+    }
+
+    30% {
+      rotate: 5deg;
+    }
+
+    60% {
+      rotate: -2.5deg;
+    }
+
+    100% {
+      rotate: 0deg;
+    }
+  }
+
+  @keyframes bookmark-drop {
+    from {
+      translate: 0 -110%;
+    }
+
+    to {
+      translate: 0 0;
+    }
+  }
+
+  /* 窄屏页边只有 1rem：挂在内容区右上角，顶栏给它让出位置（见 PageBar.astro），丝带短一些 */
+  @media (width <= 48rem) {
+    .bookmark {
+      inset-inline-end: 1rem;
+    }
+
+    .ribbon {
+      inline-size: 1.5rem;
+      block-size: 2.875rem;
+      padding-block-start: 0.5rem;
+    }
+  }
+</style>

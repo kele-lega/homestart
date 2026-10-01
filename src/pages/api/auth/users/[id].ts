@@ -5,7 +5,7 @@ import { formatIssues } from '../../../../core/config-error';
 import { getAuthService } from '../../../../adapters/auth/service';
 import { AuthInputError } from '../../../../adapters/auth/store';
 
-/** 仅管理员：PUT 重置某用户的密码，DELETE 删除该账号（不能删除自己） */
+/** 仅管理员：PUT 重置某用户的密码，DELETE 删除该账号（不能删除自己）。两种操作都会让这个账号已有的登录失效 */
 const ResetBody = z.object({ password: z.string({ error: '请填写新密码' }) });
 
 function requireAdmin(locals: App.Locals): boolean {
@@ -30,7 +30,8 @@ export const PUT: APIRoute = async ({ request, locals, params }) => {
 
   const service = await getAuthService();
   try {
-    await service.resetPassword(id, parsed.data.password);
+    // 被重置的账号所有登录随之失效；重置的是自己时保留当前这台设备
+    await service.resetPassword(id, parsed.data.password, locals.auth!);
     return json(200, ok(null));
   } catch (error) {
     if (error instanceof AuthInputError) return json(400, fail(error.message));

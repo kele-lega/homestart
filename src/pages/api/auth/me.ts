@@ -5,5 +5,6 @@ import { fail, isCrossSite, json, ok } from '../../../core/api';
 export const GET: APIRoute = ({ request, locals }) => {
   if (isCrossSite(request.headers)) return json(403, fail('不允许跨站请求'));
   if (!locals.auth) return json(200, ok(null));
-  return json(200, ok({ username: locals.auth.username, role: locals.auth.role }));
+  const { username, displayName, role } = locals.auth;
+  return json(200, ok({ username, displayName, role }));
 };

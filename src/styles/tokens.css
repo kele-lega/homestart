@@ -35,6 +35,9 @@
   /* 页眉那朵小花 */
   --mark-petal: light-dark(#efb3c5, #b98aa1);
   --mark-heart: light-dark(#c95a7b, #f5c6d3);
+  /* 页顶垂下的书签（登录入口）：丝带和上面的字，两套主题下字和底的对比度都在 4.5:1 以上 */
+  --ribbon: light-dark(#b5446a, #8f4966);
+  --ribbon-ink: light-dark(#fffcf7, #fbeef2);
   /* 花瓣形状，只当遮罩用，颜色来自 background */
   --petal: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-6 -16 12 16'><path d='M0 0C-5-4-6.5-11-3.2-15.5L0-13.4L3.2-15.5C6.5-11 5-4 0 0Z'/></svg>");
 
@@ -81,6 +84,10 @@
   --dur-open: 280ms;
   --dur-close: 220ms;
   --dur-theme: 360ms;
+  /* 翻页（首页 ⇄ 登录页、个人中心），见 styles/page-turn.css */
+  --dur-turn: 700ms;
+  /* 翻起来的纸页投在底下那页上的影子 */
+  --turn-shadow: light-dark(rgb(29 39 56 / 0.28), rgb(0 0 0 / 0.6));
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --spring: cubic-bezier(0.3, 1.3, 0.6, 1);

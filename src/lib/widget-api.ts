@@ -10,6 +10,18 @@
 export const CLIENT_HEADER = 'x-home-client';
 export const CLIENT_HEADER_VALUE = '1';
 
+/**
+ * 同源脚本请求的请求头。改数据的请求（非 GET）一律声明 JSON，哪怕没有请求体：
+ * Astro 的 checkOrigin 对「没有 Content-Type」的 POST/DELETE 也按表单处理、要求 Origin 与它眼里的站点地址一致，
+ * 而经反代访问时它看到的是内部地址，登出、取消订阅这类不带请求体的操作会被 403。
+ * 跨站防护由服务端的 isCrossSite（Sec-Fetch-Site / 这个自定义头）负责，不靠 Content-Type
+ */
+export function jsonHeaders(method: string): Record<string, string> {
+  return method === 'GET'
+    ? { [CLIENT_HEADER]: CLIENT_HEADER_VALUE }
+    : { [CLIENT_HEADER]: CLIENT_HEADER_VALUE, 'content-type': 'application/json' };
+}
+
 type Query = Readonly<Record<string, string>>;
 
 export function actionUrl(id: string, action: string, query: Query = {}): string {
@@ -37,10 +49,7 @@ export interface SendOptions {
 export async function sendAction(id: string, action: string, { method, body }: SendOptions, signal?: AbortSignal): Promise<unknown> {
   const response = await fetch(actionUrl(id, action), {
     method,
-    headers: {
-      [CLIENT_HEADER]: CLIENT_HEADER_VALUE,
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-    },
+    headers: jsonHeaders(method),
     body: body === undefined ? undefined : JSON.stringify(body),
     signal,
   });

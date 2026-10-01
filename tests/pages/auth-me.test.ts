@@ -13,9 +13,13 @@ describe('GET /api/auth/me', () => {
     await expect(response.json()).resolves.toEqual({ success: true, data: null, error: null });
   });
 
-  it('returns the username and role when signed in', async () => {
-    const response = await call({ userId: 1, username: 'alice', role: 'admin' });
-    await expect(response.json()).resolves.toEqual({ success: true, data: { username: 'alice', role: 'admin' }, error: null });
+  it('returns the username, display name and role when signed in, without session details', async () => {
+    const response = await call({ sessionId: 7, userId: 1, username: 'alice', displayName: '爱丽丝', role: 'admin' });
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: { username: 'alice', displayName: '爱丽丝', role: 'admin' },
+      error: null,
+    });
   });
 
   it('rejects cross-site requests', async () => {

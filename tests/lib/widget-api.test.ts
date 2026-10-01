@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { actionUrl, CLIENT_HEADER, CLIENT_HEADER_VALUE, fetchAction, sendAction } from '../../src/lib/widget-api';
+import { actionUrl, CLIENT_HEADER, CLIENT_HEADER_VALUE, fetchAction, jsonHeaders, sendAction } from '../../src/lib/widget-api';
 
 describe('actionUrl', () => {
   it('encodes the widget id, action name and query', () => {
@@ -45,7 +45,7 @@ describe('sendAction', () => {
     expect(headers.get(CLIENT_HEADER)).toBe(CLIENT_HEADER_VALUE);
   });
 
-  it('omits the body and content type when there is nothing to send', async () => {
+  it('omits the body but still declares JSON when there is nothing to send', async () => {
     // Arrange
     const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json({ success: true, data: null, error: null }));
     vi.stubGlobal('fetch', fetch);
@@ -57,6 +57,16 @@ describe('sendAction', () => {
     const [, init] = fetch.mock.calls[0]!;
     expect(init!.method).toBe('DELETE');
     expect(init!.body).toBeUndefined();
-    expect(new Headers(init!.headers).has('content-type')).toBe(false);
+    // 没有 Content-Type 时 Astro 的 checkOrigin 按表单提交处理，经反代访问会被 403
+    expect(new Headers(init!.headers).get('content-type')).toBe('application/json');
+  });
+});
+
+describe('jsonHeaders', () => {
+  it('declares JSON on every write, and only the client header on reads', () => {
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      expect(jsonHeaders(method), method).toEqual({ [CLIENT_HEADER]: CLIENT_HEADER_VALUE, 'content-type': 'application/json' });
+    }
+    expect(jsonHeaders('GET')).toEqual({ [CLIENT_HEADER]: CLIENT_HEADER_VALUE });
   });
 });

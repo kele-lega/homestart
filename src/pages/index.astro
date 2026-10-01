@@ -23,6 +23,9 @@ if (result.config) {
   Astro.logger.error(result.error.message);
   Astro.response.status = 500;
 }
+
+// 页顶的书签按登录状态渲染（登录后印着名字）：只许浏览器自己留、每次都回来确认，代理不能缓存
+Astro.response.headers.set('cache-control', 'private, no-cache');
 ---
 
 {

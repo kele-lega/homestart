@@ -1,0 +1,16 @@
+---
+import LoginForm from '../components/LoginForm.svelte';
+import { loadSiteOrDefault } from '../core/site-page';
+import LeafLayout from '../layouts/LeafLayout.astro';
+
+// 已登录就没必要再登录一次，回首页
+if (Astro.locals.auth) return Astro.redirect('/', 303);
+
+// 表单页不留缓存，也不进往返缓存（bfcache），后退回来总是新的
+Astro.response.headers.set('cache-control', 'private, no-store');
+const site = await loadSiteOrDefault((message) => Astro.logger.error(message));
+---
+
+<LeafLayout site={site} heading="登录">
+  <LoginForm client:load />
+</LeafLayout>

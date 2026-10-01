@@ -30,20 +30,53 @@ describe('POST /api/auth/login', () => {
     api = await setup();
   });
 
-  it('logs in and sets an HttpOnly session cookie', async () => {
-    const login = vi.fn().mockResolvedValue({ sessionId: 'abc123', username: 'alice', role: 'user' });
+  const signedIn = (remember: boolean) => ({
+    token: 'abc123',
+    remember,
+    user: { sessionId: 5, userId: 1, username: 'alice', displayName: '爱丽丝', role: 'user' },
+  });
+
+  it('logs in and sets an HttpOnly session cookie that ends with the browser session', async () => {
+    const login = vi.fn().mockResolvedValue(signedIn(false));
     api.getAuthService.mockResolvedValue({ login } as never);
 
     const response = await api.call(jsonRequest({ username: 'alice', password: 'password123' }));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ success: true, data: { username: 'alice', role: 'user' }, error: null });
-    expect(login).toHaveBeenCalledWith('alice', 'password123');
-    expect(api.cookies.set).toHaveBeenCalledWith(
-      'home_session',
-      'abc123',
-      expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'lax', path: '/' }),
-    );
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: { username: 'alice', displayName: '爱丽丝', role: 'user' },
+      error: null,
+    });
+    expect(login).toHaveBeenCalledWith({ username: 'alice', password: 'password123', remember: false, userAgent: null, ip: null });
+    const [name, value, options] = api.cookies.set.mock.calls[0]! as unknown as [string, string, Record<string, unknown>];
+    expect([name, value]).toEqual(['home_session', 'abc123']);
+    expect(options).toMatchObject({ httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+    expect(options).not.toHaveProperty('maxAge');
+  });
+
+  it('keeps the cookie for 30 days when asked to remember, and records the device', async () => {
+    const login = vi.fn().mockResolvedValue(signedIn(true));
+    api.getAuthService.mockResolvedValue({ login } as never);
+    const headers = { ...SAME_ORIGIN, 'user-agent': 'UA', 'x-forwarded-for': '203.0.113.4, 10.0.0.1' };
+
+    await api.call(jsonRequest({ username: 'alice', password: 'password123', remember: true }, headers));
+
+    expect(login).toHaveBeenCalledWith(expect.objectContaining({ remember: true, userAgent: 'UA', ip: '203.0.113.4' }));
+    expect(api.cookies.set).toHaveBeenCalledWith('home_session', 'abc123', expect.objectContaining({ maxAge: 30 * 24 * 3600 }));
+  });
+
+  it('does not record a forwarded value that is not an IP address', async () => {
+    const login = vi.fn().mockResolvedValue(signedIn(false));
+    api.getAuthService.mockResolvedValue({ login } as never);
+    await api.call(jsonRequest({ username: 'alice', password: 'password123' }, { ...SAME_ORIGIN, 'x-forwarded-for': '<script>' }));
+    expect(login).toHaveBeenCalledWith(expect.objectContaining({ ip: null }));
+  });
+
+  it('rejects a non-boolean remember flag', async () => {
+    const response = await api.call(jsonRequest({ username: 'alice', password: 'password123', remember: 'yes' }));
+    expect(response.status).toBe(400);
+    expect(api.getAuthService).not.toHaveBeenCalled();
   });
 
   it('answers 400 with the service message on bad credentials', async () => {

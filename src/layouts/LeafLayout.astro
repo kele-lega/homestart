@@ -1,0 +1,109 @@
+---
+import type { SiteConfig } from '../core/site';
+import { localDateKey, weekdayOf } from '../lib/zoned-time';
+import ThemeSwitch from '../zones/ThemeSwitch.astro';
+import BaseLayout from './BaseLayout.astro';
+import '../styles/leaf.css';
+
+/**
+ * 活页夹里首页底下的那几页（登录、个人中心）：同一张纸、同一列装订孔，顶上「← 回主页」和主题切换，
+ * 报头是站名和今天的日期。从首页点进来时首页翻起、露出这一页（styles/page-turn.css）
+ */
+interface Props {
+  readonly site: SiteConfig;
+  /** 标签页标题里站名前面那一段 */
+  readonly heading: string;
+  /** 纸上内容的宽度：登录只要一张窄卡片，个人中心宽一些 */
+  readonly width?: 'narrow' | 'wide';
+}
+
+const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const { site, heading, width = 'narrow' } = Astro.props;
+const today = localDateKey(Date.now(), site.timezone);
+---
+
+<BaseLayout site={{ ...site, title: `${heading} · ${site.title}` }} leaf="inner">
+  <div class="sheet leaf" data-width={width}>
+    <nav class="leaf-bar" aria-label="页面">
+      <a class="leaf-back" href="/"><span aria-hidden="true">←</span> 回主页</a>
+      <ThemeSwitch />
+    </nav>
+    <header class="leaf-masthead">
+      <p class="leaf-title">{site.title}</p>
+      <p class="leaf-date">
+        <time datetime={today}>{today.replaceAll('-', '.')}</time>{' '}·{' '}{WEEKDAYS[weekdayOf(today)]}
+      </p>
+    </header>
+    <main class="leaf-body">
+      <slot />
+    </main>
+  </div>
+</BaseLayout>
+
+<style>
+  .leaf {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .leaf-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 1.5rem;
+  }
+
+  .leaf-back {
+    position: relative;
+    font: var(--text-sm) / 1.5 var(--label);
+    color: var(--ink-3);
+    transition: color var(--dur-hover) var(--ease-out);
+  }
+
+  .leaf-back span {
+    display: inline-block;
+    transition: translate var(--dur-hover) var(--spring);
+  }
+
+  @media (hover: hover) {
+    .leaf-back:hover {
+      color: var(--sakura-deep);
+    }
+
+    .leaf-back:hover span {
+      translate: -3px 0;
+    }
+  }
+
+  .leaf-masthead {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-2);
+    margin-block: clamp(2rem, 9vh, 5rem) var(--space-8);
+    text-align: center;
+  }
+
+  .leaf-title {
+    font: 400 1.75rem / 1.2 var(--serif);
+    letter-spacing: 0.35em;
+    /* 字距加在每个字后面：往右补回最后一个字的，整体才居中 */
+    margin-inline-end: -0.35em;
+  }
+
+  .leaf-date {
+    font: var(--text-sm) / 1.5 var(--num);
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+  }
+
+  .leaf-body {
+    display: grid;
+    gap: var(--space-8);
+    inline-size: min(22rem, 100%);
+    margin-inline: auto;
+  }
+
+  .leaf[data-width='wide'] .leaf-body {
+    inline-size: min(46rem, 100%);
+  }
+</style>

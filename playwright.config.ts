@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
+import { E2E_ADMIN } from './e2e/support/accounts';
 
 // E2E 单独构建到 dist/e2e、单独起在 4329 端口，不碰 dist/client、dist/server 和 4321 上的服务
 const PORT = 4329;
@@ -63,6 +64,11 @@ export default defineConfig({
       STEAM_API_KEY: '',
       // 整轮 73 个用例共用同一个匿名用户 key，都算进限流的同一个窗口；调大到用不着的量级，不改变生产环境的默认值
       WIDGET_ACTION_RATE_LIMIT: '2000',
+      // 登录用内存库，每次启动都是空的，只有这个管理员；登录限流按来源地址计数，e2e 全从本机来，同样放宽
+      AUTH_DB_FILE: ':memory:',
+      INITIAL_ADMIN_USER: E2E_ADMIN.username,
+      INITIAL_ADMIN_PASSWORD: E2E_ADMIN.password,
+      AUTH_LOGIN_RATE_LIMIT: '2000',
     },
     reuseExistingServer: false,
     timeout: 30_000,

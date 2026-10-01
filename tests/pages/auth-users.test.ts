@@ -5,8 +5,8 @@ vi.mock('../../src/adapters/auth/service', () => ({ getAuthService: vi.fn() }));
 
 const SAME_ORIGIN = { 'sec-fetch-site': 'same-origin' };
 const JSON_HEADERS = { ...SAME_ORIGIN, 'content-type': 'application/json' };
-const ADMIN: App.Locals['auth'] = { userId: 1, username: 'root', role: 'admin' };
-const USER: App.Locals['auth'] = { userId: 2, username: 'alice', role: 'user' };
+const ADMIN: App.Locals['auth'] = { sessionId: 10, userId: 1, username: 'root', displayName: null, role: 'admin' };
+const USER: App.Locals['auth'] = { sessionId: 20, userId: 2, username: 'alice', displayName: null, role: 'user' };
 
 async function setup() {
   vi.resetModules();
@@ -42,11 +42,19 @@ describe('GET /api/auth/users', () => {
     api = await setup();
   });
 
-  it('lists users for an admin', async () => {
-    api.getAuthService.mockResolvedValue({ listUsers: () => [{ id: 1, username: 'root', role: 'admin', createdAt: 0 }] } as never);
+  it('lists users for an admin with the last login time but not its IP', async () => {
+    const lastLogin = { at: 1234, ip: '203.0.113.8' };
+    const row = { id: 1, username: 'root', displayName: '根', role: 'admin', createdAt: 0, lastLogin };
+    api.getAuthService.mockResolvedValue({ listUsers: () => [row] } as never);
     const response = await api.list(ADMIN);
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ success: true, data: [{ username: 'root' }] });
+    const body = await response.json();
+    expect(body).toEqual({
+      success: true,
+      data: [{ id: 1, username: 'root', displayName: '根', role: 'admin', createdAt: 0, lastLoginAt: 1234 }],
+      error: null,
+    });
+    expect(JSON.stringify(body)).not.toContain('203.0.113.8');
   });
 
   it('rejects a non-admin user', async () => {
@@ -104,12 +112,12 @@ describe('PUT /api/auth/users/[id]', () => {
     api = await setup();
   });
 
-  it('resets a password for an admin', async () => {
+  it('resets a password for an admin, passing who did it so their own device survives', async () => {
     const resetPassword = vi.fn().mockResolvedValue(undefined);
     api.getAuthService.mockResolvedValue({ resetPassword } as never);
     const response = await api.resetPassword(ADMIN, '2', { password: 'newpassword1' });
     expect(response.status).toBe(200);
-    expect(resetPassword).toHaveBeenCalledWith(2, 'newpassword1');
+    expect(resetPassword).toHaveBeenCalledWith(2, 'newpassword1', ADMIN);
   });
 
   it('rejects a non-admin', async () => {

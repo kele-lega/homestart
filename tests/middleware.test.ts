@@ -56,12 +56,13 @@ describe('middleware', () => {
 
   it('resolves a valid session cookie into locals.auth', async () => {
     const { getAuthService } = await import('../src/adapters/auth/service');
+    const alice = { sessionId: 4, userId: 1, username: 'alice', displayName: '爱丽丝', role: 'admin' };
     vi.mocked(getAuthService).mockResolvedValue({
-      currentUser: (id: string) => (id === 'good-session' ? { userId: 1, username: 'alice', role: 'admin' } : undefined),
+      currentUser: (token: string) => (token === 'good-session' ? alice : undefined),
     } as never);
     const context = contextFor('/', 'good-session');
     await onRequest(context, async () => new Response('x'));
-    expect(context.locals.auth).toEqual({ userId: 1, username: 'alice', role: 'admin' });
+    expect(context.locals.auth).toEqual(alice);
   });
 
   it('leaves locals.auth unset when the session cookie does not match any session', async () => {

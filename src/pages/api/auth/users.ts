@@ -4,6 +4,7 @@ import { fail, isCrossSite, json, ok, readJsonBody } from '../../../core/api';
 import { formatIssues } from '../../../core/config-error';
 import { getAuthService } from '../../../adapters/auth/service';
 import { AuthInputError } from '../../../adapters/auth/store';
+import { toUserView } from '../../../lib/account-view';
 
 /** 仅管理员：新建普通用户/管理员账号（GET 列出账号，POST 新建）。没有公开注册入口 */
 const CreateBody = z.object({
@@ -20,7 +21,7 @@ export const GET: APIRoute = async ({ request, locals }) => {
   if (isCrossSite(request.headers)) return json(403, fail('不允许跨站请求'));
   if (!requireAdmin(locals)) return json(403, fail('只有管理员可以查看账号列表'));
   const service = await getAuthService();
-  return json(200, ok(service.listUsers()));
+  return json(200, ok(service.listUsers().map(toUserView)));
 };
 
 export const POST: APIRoute = async ({ request, locals }) => {
