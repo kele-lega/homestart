@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:e2e": "npm run e2e:build && playwright test",
     "e2e:build": "astro build --outDir dist/e2e",
+    "fetch-icons": "node scripts/fetch-icons.mjs",
     "coverage": "vitest run --coverage"
   },
   "dependencies": {

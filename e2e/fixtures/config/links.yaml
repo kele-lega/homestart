@@ -52,3 +52,7 @@ links:
     url: https://www.douyin.com/
     icon: /icons/tiktok.svg
     category: fun
+  # 不填 icon：按域名推导。e2e 把所有外网请求 stub 成 HTML，图标加载失败后应退回首字母
+  - name: 无图标站
+    url: https://noicon.example.com/
+    category: fun

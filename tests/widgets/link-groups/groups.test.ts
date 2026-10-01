@@ -28,7 +28,12 @@ describe('groupLinks', () => {
     const [fun, dev] = groupLinks(LINKS);
 
     expect(fun).toMatchObject({ name: '娱乐', tone: 'pink' });
-    expect(fun!.links[0]).toEqual({ name: '哔哩哔哩', url: 'https://www.bilibili.com/', meta: '乾杯~' });
+    expect(fun!.links[0]).toEqual({
+      name: '哔哩哔哩',
+      url: 'https://www.bilibili.com/',
+      meta: '乾杯~',
+      icon: 'https://a.favicon.im/www.bilibili.com?larger=true',
+    });
     expect(dev!.links).toEqual([
       {
         name: 'GitHub',
@@ -37,7 +42,12 @@ describe('groupLinks', () => {
         icon: '/icons/github.svg',
         iconDark: '/icons/github-light.svg',
       },
-      { name: 'Docs', url: 'https://docs.example.com/guide', meta: 'docs.example.com' },
+      {
+        name: 'Docs',
+        url: 'https://docs.example.com/guide',
+        meta: 'docs.example.com',
+        icon: 'https://a.favicon.im/docs.example.com?larger=true',
+      },
     ]);
   });
 

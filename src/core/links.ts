@@ -5,8 +5,17 @@ import { Id, SITE_PATH, ToneSchema } from './schema-parts';
 /** links.yaml：所有网站链接的唯一数据源，常用网站、分类链接和本地搜索都从这里取 */
 
 const HTTPS_ASSET = /^https:\/\/[^\s"'<>()]+$/;
+const HOST_PLACEHOLDER = '{host}';
 
 const Name = z.string().trim().min(1, '名称不能为空');
+
+/** 没填 icon 时按网址域名取图标；{host} 会被替换成域名，改这一行就能换图标服务 */
+export const DEFAULT_FAVICON_SERVICE = 'https://a.favicon.im/{host}?larger=true';
+
+const FaviconService = z
+  .string()
+  .trim()
+  .refine((v) => HTTPS_ASSET.test(v) && v.includes(HOST_PLACEHOLDER), `图标服务需为 https 地址且包含 ${HOST_PLACEHOLDER} 占位符`);
 
 const Icon = z
   .string()
@@ -36,6 +45,8 @@ const CategorySchema = z.strictObject({
 });
 
 const LinksSchema = z.strictObject({
+  /** 图标服务模板，含 {host} 占位符；不填用 DEFAULT_FAVICON_SERVICE */
+  faviconService: FaviconService.default(DEFAULT_FAVICON_SERVICE),
   categories: z.array(CategorySchema).default([]),
   links: z.array(LinkSchema).default([]),
 });
@@ -44,11 +55,16 @@ export type Link = z.infer<typeof LinkSchema>;
 export type Category = z.infer<typeof CategorySchema>;
 export type LinksConfig = z.infer<typeof LinksSchema>;
 
+/** 从网址域名推导图标地址；service 是含 {host} 的模板 */
+export function deriveIcon(url: string, service: string): string {
+  return service.replace(HOST_PLACEHOLDER, new URL(url).hostname);
+}
+
 export function parseLinks(raw: unknown): LinksConfig {
   const parsed = LinksSchema.safeParse(raw ?? {});
   if (!parsed.success) throw new ConfigError('links.yaml', formatIssues(parsed.error.issues));
 
-  const { categories, links } = parsed.data;
+  const { categories, links, faviconService } = parsed.data;
   const ids = categories.map((c) => c.id);
   const problems = [
     ...ids.filter((id, index) => ids.indexOf(id) !== index).map((id) => `分类 "${id}" 重复`),
@@ -57,5 +73,10 @@ export function parseLinks(raw: unknown): LinksConfig {
       .map((link) => `链接 "${link.name}" 的分类 "${link.category}" 不存在`),
   ];
   if (problems.length > 0) throw new ConfigError('links.yaml', problems);
-  return parsed.data;
+
+  // 没填图标就按网址域名取 favicon，配置里只写 name/url 也能有图标
+  return {
+    ...parsed.data,
+    links: links.map((link) => (link.icon ? link : { ...link, icon: deriveIcon(link.url, faviconService) })),
+  };
 }

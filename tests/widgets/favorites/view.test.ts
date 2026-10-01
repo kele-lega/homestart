@@ -50,14 +50,23 @@ describe('favorites view', () => {
     expect(html).not.toContain('Docs');
   });
 
-  it('renders light and dark icons, or a letter when there is no icon', async () => {
+  it('renders light and dark icons, and derives a favicon when icon is omitted', async () => {
     const html = await render(LINKS);
 
     expect(html).toMatch(/src="\/icons\/github\.svg"[^>]*data-variant="light"/);
     expect(html).toMatch(/src="\/icons\/github-light\.svg"[^>]*data-variant="dark"/);
-    expect(html).toMatch(/class="letter[^"]*"[^>]*>哔</);
+    // 哔哩哔哩没填 icon：按域名推导出 favicon.im 地址，不再是首字母
+    expect(html).toMatch(/src="https:\/\/a\.favicon\.im\/www\.bilibili\.com\?larger=true"/);
+    expect(html).not.toMatch(/class="letter[^"]*"[^>]*>哔</);
     // 服务端渲染不能带内联事件属性（CSP）
     expect(html).not.toMatch(/\son(error|load)=/);
+  });
+
+  it('falls back to the first letter when the icon is unusable', async () => {
+    // icon 为站内路径但文件不存在：运行时由 SiteIcon 的 error 监听退回首字母。
+    // 服务端渲染出的是 <img>，首字母只在浏览器里换上，这里断言图片地址正确即可。
+    const html = await render({ links: [{ name: '断链', url: 'https://x.com', icon: '/icons/not-found.svg', favorite: true }] });
+    expect(html).toMatch(/src="\/icons\/not-found\.svg"/);
   });
 
   it('explains how to add favorites when there are none', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ConfigError } from '../../src/core/config-error';
-import { parseLinks } from '../../src/core/links';
+import { DEFAULT_FAVICON_SERVICE, deriveIcon, parseLinks } from '../../src/core/links';
 
 function problemsOf(raw: unknown): readonly string[] {
   try {
@@ -39,7 +39,11 @@ describe('parseLinks', () => {
   });
 
   it('treats an empty file as no links', () => {
-    expect(parseLinks(null)).toEqual({ categories: [], links: [] });
+    expect(parseLinks(null)).toEqual({
+      faviconService: DEFAULT_FAVICON_SERVICE,
+      categories: [],
+      links: [],
+    });
   });
 
   it('gives categories a neutral tone unless a known tone is set', () => {
@@ -83,5 +87,51 @@ describe('parseLinks', () => {
       links: [{ name: 'Steam', url: 'https://store.steampowered.com', category: 'games' }],
     });
     expect(problems).toEqual(['分类 "ai" 重复', '链接 "Steam" 的分类 "games" 不存在']);
+  });
+});
+
+describe('icon derivation', () => {
+  it('derives a favicon url from the host when icon is omitted', () => {
+    const { links } = parseLinks({
+      links: [
+        { name: 'B 站', url: 'https://www.bilibili.com/video' },
+        { name: 'GitHub', url: 'https://github.com' },
+      ],
+    });
+    expect(links[0]!.icon).toBe('https://a.favicon.im/www.bilibili.com?larger=true');
+    expect(links[1]!.icon).toBe('https://a.favicon.im/github.com?larger=true');
+  });
+
+  it('keeps an explicitly configured icon untouched', () => {
+    const { links } = parseLinks({
+      links: [{ name: 'GitHub', url: 'https://github.com', icon: '/icons/github.svg' }],
+    });
+    expect(links[0]!.icon).toBe('/icons/github.svg');
+  });
+
+  it('does not derive iconDark', () => {
+    const { links } = parseLinks({ links: [{ name: 'x', url: 'https://x.com' }] });
+    expect(links[0]).not.toHaveProperty('iconDark');
+  });
+
+  it('honours a custom faviconService template', () => {
+    const { links } = parseLinks({
+      faviconService: 'https://icons.example.com/ip3/{host}.ico',
+      links: [{ name: 'x', url: 'https://sub.x.com/a/b' }],
+    });
+    expect(links[0]!.icon).toBe('https://icons.example.com/ip3/sub.x.com.ico');
+  });
+
+  it.each(['https://icons.example.com/ip3.ico', 'http://icons.example.com/{host}'])(
+    'rejects the faviconService %s',
+    (faviconService) => {
+      const problems = problemsOf({ faviconService, links: [] });
+      expect(problems[0]).toMatch(/^faviconService: /);
+    },
+  );
+
+  it('deriveIcon replaces only the {host} placeholder', () => {
+    expect(deriveIcon('https://a.b.com/x', 'https://s/{host}/{host}?q={host}')).toBe('https://s/a.b.com/{host}?q={host}');
+    expect(parseLinks(null).faviconService).toBe(DEFAULT_FAVICON_SERVICE);
   });
 });

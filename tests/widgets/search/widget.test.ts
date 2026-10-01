@@ -68,7 +68,7 @@ describe('suggest action', () => {
 });
 
 describe('toSiteEntry', () => {
-  it('keeps only search fields, strips www. from the host and omits missing icons', () => {
+  it('keeps only search fields, strips www. from the host and derives missing icons', () => {
     const { links } = parseLinks({
       links: [
         { name: 'A', url: 'https://www.a.example/x', icon: '/icons/a.svg', iconDark: '/icons/a-dark.svg', favorite: true },
@@ -77,7 +77,14 @@ describe('toSiteEntry', () => {
     });
     expect(links.map(toSiteEntry)).toEqual([
       { name: 'A', url: 'https://www.a.example/x', host: 'a.example', keywords: [], favorite: true, icon: '/icons/a.svg', iconDark: '/icons/a-dark.svg' },
-      { name: 'B', url: 'https://b.example/', host: 'b.example', keywords: ['bee'], favorite: false },
+      {
+        name: 'B',
+        url: 'https://b.example/',
+        host: 'b.example',
+        keywords: ['bee'],
+        favorite: false,
+        icon: 'https://a.favicon.im/b.example?larger=true',
+      },
     ]);
   });
 });

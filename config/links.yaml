@@ -1,10 +1,15 @@
 # 所有网站链接。常用网站（favorite: true）、底部分类导航和本地搜索都读这里。
-#   icon：站内路径（public/ 下）或 https 图片地址
+#   icon：可选。不填就按网址域名自动取 favicon（默认 https://a.favicon.im/<域名>?larger=true）
+#         想固定图标才填：站内路径（public/ 下，如 /icons/github.svg）或 https 图片地址
 #   iconDark：深色模式用的图标（深色图形在深色底上看不清时填，比如 GitHub）
 #   category：对应 categories 里的 id；不填则只参与搜索
 #   keywords：额外搜索词，比如拼音缩写
 # categories 的顺序就是分类导航的顺序；tone 可选 neutral / pink / blue / purple / green / peach / slate。
 # 分类按用途划分，尽量不设「其他」这种杂项分组：放不进去的链接可以不填 category，只参与搜索。
+# faviconService：换个图标服务，模板里用 {host} 占位符（不填就用默认的 favicon.im）。
+#
+# 日常加一条链接只写这一行就够了：
+#   - { name: 哔哩哔哩, url: https://www.bilibili.com, category: fun, favorite: true }
 
 categories:
   - { id: dev, name: 开发, tone: blue }
@@ -70,6 +75,11 @@ links:
   - name: 凡人
     url: https://fanrenapi.com/
     icon: https://fanrenapi.com/favicon.ico
+    category: ai
+  - name: api设置
+    url: https://ccs.kelelega.dpdns.org/providers
+    # 用本地副本：favicon.im 缓存的是旧图标；原站带 Cross-Origin-Resource-Policy: same-origin，浏览器不让跨站加载
+    icon: /icons/ccs.svg
     category: ai
 
   # 娱乐

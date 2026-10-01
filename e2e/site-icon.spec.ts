@@ -32,6 +32,22 @@ test.describe('网站图标', () => {
     await expect(stack.nth(0).locator('.letter')).toHaveCount(0);
   });
 
+  test('没填 icon 时按域名推导，外网加载不到就退回首字母', async ({ page }) => {
+    await gotoHome(page);
+    const nav = page.getByRole('navigation', { name: '网站分类' });
+    await nav.scrollIntoViewIfNeeded();
+    const stack = nav.getByRole('button', { name: /^娱乐/ }).locator(ICON);
+
+    // 娱乐分类：哔哩哔哩、抖音、无图标站。无图标站没配 icon，图标地址由域名推导出来
+    await expect(stack).toHaveCount(3);
+    const derived = stack.nth(2).locator('img');
+    await expect(derived).toHaveCount(1);
+    await expect(derived).toHaveAttribute('src', 'https://a.favicon.im/noicon.example.com?larger=true');
+
+    // e2e 把所有外网请求 stub 成 HTML，图片解不出来，最后退回「无」字首字母
+    await expect(stack.nth(2).locator('.letter')).toHaveText('无');
+  });
+
   test('深色主题换用 iconDark', async ({ page }) => {
     await gotoHome(page);
     const tile = githubTile(page);

@@ -16,21 +16,37 @@ timezone: Asia/Shanghai  # 影响日历、Deadline、时钟的日期计算
 ## links.yaml — 网站链接
 
 ```yaml
-categories:
-  - { id: dev, name: 开发, tone: blue }   # tone 可选：neutral / pink / blue / purple / green / peach / slate
-
 links:
+  # 最简写法：不填 icon 就按网址域名自动取 favicon（一个 { } 写完一行）
+  - { name: 哔哩哔哩, url: https://www.bilibili.com, category: fun, favorite: true }
+
   - name: GitHub
     url: https://github.com
-    icon: /icons/github.svg        # public/ 下的路径，或 https 图片地址
+    icon: /icons/github.svg        # 可选。不填就按域名自动取；填了就用手填的这个（public/ 下的路径，或 https 图片地址）
     iconDark: /icons/github-light.svg   # 深色主题下用的图标（深色图形在深色底上看不清时才需要）
     description: Where the world builds software   # 显示在常用网站卡片里的小字
     category: dev                  # 对应 categories 的 id；不填则只参与搜索，不出现在分类导航
     favorite: true                 # 是否放进「常用网站」卡片
     keywords: [gh]                 # 额外的搜索关键词，比如拼音缩写
+
+# 图标服务：模板里的 {host} 会换成链接的域名。不填就用默认的 favicon.im
+faviconService: https://a.favicon.im/{host}?larger=true
 ```
 
 `categories` 的顺序就是分类导航的显示顺序。链接不填 `category` 也没关系，仍然能被本地搜索找到。
+
+**图标的三种情况**：
+
+1. **不填 `icon`** —— 按网址域名自动取，`https://github.com` → `https://a.favicon.im/github.com?larger=true`。日常加链接推荐这种。
+2. **填站内路径** —— 如 `/icons/github.svg`，图标放在 `public/icons/` 下。快、稳、不依赖外网，常用站点推荐。
+3. **填 https 地址** —— 直接用外链图标（适合对方有官方 favicon 的情况）。
+
+外链图标依赖第三方服务，服务挂了图标会退回首字母。想彻底不依赖外网，跑一次 `npm run fetch-icons`
+把所有外链图标下载到 `public/icons/fetched/` 并自动改写配置，见 [SERVER-OPERATIONS.md](SERVER-OPERATIONS.md)。
+
+**目标站换了图标、这里没跟着变**：favicon.im 会把抓到的图标缓存一周左右。最稳的做法是把图标下载到
+`public/icons/` 再填站内路径（放进去后同步一份到 `dist/client/icons/`，或重新 `npm run build`）。
+直接填对方的图标地址不一定行：对方若返回 `Cross-Origin-Resource-Policy: same-origin`，浏览器会拒绝跨站加载，退回首字母。
 
 ## layout.yaml — 页面布局
 
