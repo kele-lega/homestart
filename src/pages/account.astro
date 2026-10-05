@@ -1,0 +1,27 @@
+---
+import AccountSheet from '../components/account/AccountSheet.svelte';
+import { getAuthService } from '../adapters/auth/service';
+import { getRegistration } from '../adapters/auth/signup';
+import { loadSiteOrDefault } from '../core/site-page';
+import LeafLayout from '../layouts/LeafLayout.astro';
+import { noticeOf, toSessionView, toUserView } from '../lib/account-view';
+
+// 个人中心：没登录先去登录；账号在别处被删掉了（会话随之失效）也一样
+const auth = Astro.locals.auth;
+if (!auth) return Astro.redirect('/login', 303);
+const service = await getAuthService();
+const account = service.account(auth.userId);
+if (!account) return Astro.redirect('/login', 303);
+
+// 页面里有登录设备和 IP：不留任何缓存，登出后按「后退」也不会从往返缓存里翻出来
+Astro.response.headers.set('cache-control', 'private, no-store');
+const site = await loadSiteOrDefault((message) => Astro.logger.error(message));
+const sessions = service.listSessions(auth.userId).map((session) => toSessionView(session, auth.sessionId));
+const users = auth.role === 'admin' ? service.listUsers().map(toUserView) : undefined;
+const options = (await getRegistration()).options();
+const notice = noticeOf(Astro.url.searchParams.get('notice'));
+---
+
+<LeafLayout site={site} heading="个人中心" width="wide">
+  <AccountSheet client:load account={account} sessions={sessions} users={users} timeZone={site.timezone} options={options} notice={notice} />
+</LeafLayout>

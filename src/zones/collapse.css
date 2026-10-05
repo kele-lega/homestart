@@ -1,0 +1,112 @@
+/* 手机端可折叠区域：标题行变成按钮，内容用 grid 行高 0fr → 1fr 过渡。桌面端 panel 不参与布局 */
+
+.l-zone-toggle {
+  display: none;
+}
+
+.l-zone-panel {
+  display: contents;
+}
+
+@media (width <= 48rem) {
+  /* 标题和内容之间的空当交给 panel 的第一条轨道；上方留白移进按钮，粗线与细线之间整条都能点 */
+  .l-zone[data-mobile='collapse']:has(> .l-zone-title) {
+    gap: 0;
+    padding-top: 0;
+  }
+
+  .l-zone[data-mobile='collapse'] > .l-zone-title {
+    padding-bottom: 0;
+  }
+
+  .l-zone[data-mobile='collapse'] .l-zone-label {
+    display: none;
+  }
+
+  .l-zone-toggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 0.625rem 0 0.5625rem;
+    text-align: start;
+    background: none;
+    border: 0;
+    isolation: isolate;
+  }
+
+  /* 按下时铺一层淡樱色，只过渡 opacity */
+  .l-zone-toggle::after {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: '';
+    background: var(--sakura-wash);
+    opacity: 0;
+    transition: opacity var(--dur-hover) var(--ease-out);
+  }
+
+  .l-zone-toggle:active::after {
+    opacity: 1;
+  }
+
+  .l-zone-chevron {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-inline-start: auto;
+  }
+
+  /* 只用 transform 翻转箭头，不引起重排 */
+  .l-zone-chevron::before {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    content: '';
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    transform: translateY(-0.09rem) rotate(45deg);
+    transition: transform var(--dur-open) var(--ease-out);
+  }
+
+  [aria-expanded='true'] > .l-zone-chevron::before {
+    transform: translateY(0.09rem) rotate(225deg);
+  }
+
+  /* 第一条轨道是标题与内容之间的空当，跟着同一个 grid-template-rows 过渡；放在内容的 margin 上会撑开 0fr 的行 */
+  .l-zone[data-mobile='collapse'] > .l-zone-panel {
+    display: grid;
+    grid-template-rows: 0rem 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-rows var(--dur-close) var(--ease-out),
+      visibility 0s linear var(--dur-close);
+  }
+
+  .l-zone[data-mobile='collapse'] > .l-zone-panel[data-open] {
+    grid-template-rows: 0.875rem 1fr;
+    visibility: visible;
+    transition-duration: var(--dur-open), 0s;
+    transition-delay: 0s;
+  }
+
+  /* 内容随展开淡入并轻轻落下；clip 留出一点边距，贴边元素的焦点框不会被切掉 */
+  .l-zone[data-mobile='collapse'] > .l-zone-panel > .l-zone-body {
+    grid-row: 2;
+    min-height: 0;
+    overflow: clip;
+    overflow-clip-margin: 0.25rem;
+    opacity: 0;
+    translate: 0 -0.375rem;
+    transition:
+      opacity var(--dur-close) var(--ease-out),
+      translate var(--dur-close) var(--ease-out);
+  }
+
+  .l-zone[data-mobile='collapse'] > .l-zone-panel[data-open] > .l-zone-body {
+    opacity: 1;
+    translate: none;
+    transition-duration: var(--dur-open);
+  }
+}

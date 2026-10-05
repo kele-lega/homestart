@@ -1,0 +1,48 @@
+---
+import FrameHead from '../components/FrameHead.astro';
+import type { ResolvedWidget } from '../core/layout';
+import type { ViewContext, WidgetHeading } from '../core/widget';
+import { views } from './views';
+
+interface Props {
+  readonly widget: ResolvedWidget;
+  /** 所在区域有标题时，Widget 标题降一级 */
+  readonly headingLevel: 2 | 3;
+  readonly ctx: ViewContext;
+}
+
+const { widget, headingLevel, ctx } = Astro.props;
+const View = views.get(widget.type);
+const error = widget.error ?? (View ? undefined : `Widget "${widget.type}" 缺少 View.astro`);
+const heading: WidgetHeading | undefined = widget.title ? { title: widget.title, level: headingLevel } : undefined;
+// 出错时 View 不渲染，栏目头只能由外框来画
+const viewDrawsHead = widget.head === 'view' && !error;
+---
+
+<div
+  class="l-frame"
+  id={`w-${widget.id}`}
+  data-widget={widget.type}
+  data-chrome={widget.chrome}
+  data-tone={widget.tone}
+  style={{ '--area': widget.id, '--order-m': widget.order?.toString() }}
+>
+  {heading && !viewDrawsHead && <FrameHead heading={heading} />}
+  <div class="l-frame-body">
+    {
+      error ? (
+        <p class="l-frame-error">{error}</p>
+      ) : (
+        View && (
+          <View
+            id={widget.id}
+            options={widget.options}
+            site={ctx.site}
+            links={ctx.links}
+            heading={viewDrawsHead ? heading : undefined}
+          />
+        )
+      )
+    }
+  </div>
+</div>

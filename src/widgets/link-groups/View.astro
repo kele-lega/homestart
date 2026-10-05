@@ -1,0 +1,42 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import { groupLinks } from './groups';
+import LinkGroups from './LinkGroups.svelte';
+import type { LinkGroupsOptions } from './widget';
+
+type Props = WidgetViewProps<LinkGroupsOptions>;
+
+const { id, links } = Astro.props;
+const groups = groupLinks(links);
+---
+
+{
+  groups.length > 0 ? (
+    <LinkGroups client:load id={id} groups={groups} />
+  ) : (
+    <p class="empty">
+      还没有分类。登录后在 <a href="/settings#links">设置 · 导航</a> 里添加分类和网站；站点默认的导航在
+      <code>config/links.yaml</code> 里。
+    </p>
+  )
+}
+
+<style>
+  .empty {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .empty a {
+    color: var(--blue);
+    text-decoration: underline;
+  }
+
+  .empty code {
+    padding: 0.05em 0.35em;
+    font: 0.92em var(--mono);
+    color: var(--ink);
+    border: var(--rule-thin);
+  }
+</style>

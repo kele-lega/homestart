@@ -1,0 +1,43 @@
+---
+import { siteCounts } from '../../adapters/site-stats';
+import { listSuggestions } from '../../adapters/suggestions';
+import { logBackgroundError } from '../../core/log';
+import type { WidgetViewProps } from '../../core/widget';
+import { ZERO_COUNTS } from '../../lib/site-stats';
+import { pendingCount } from '../../lib/suggestions';
+import Panel from './Panel.svelte';
+import type { ServerOptions } from './widget';
+
+type Props = WidgetViewProps<ServerOptions>;
+
+const { options, heading, site } = Astro.props;
+// 首页按登录状态渲染、不进共享缓存（见 pages/index.astro），这里可以直接看登录角色。
+// 服务器入口只在管理员的页面里出现，别人的页面里连网址都没有
+const auth = Astro.locals.auth;
+const admin = auth?.role === 'admin';
+
+// 计数、建议读不出来都不挡首页：计数从 0 翻起，按钮上不显示条数
+const counts = await siteCounts().catch((error: unknown) => {
+  logBackgroundError('site-stats', '访问计数读取失败，首页先显示 0', error);
+  return ZERO_COUNTS;
+});
+const pending = admin
+  ? await listSuggestions()
+      .then(pendingCount)
+      .catch((error: unknown) => {
+        logBackgroundError('suggestions', '建议读取失败，按钮上先不显示条数', error);
+        return 0;
+      })
+  : 0;
+---
+
+<Panel
+  client:load
+  heading={heading}
+  entries={admin ? options.entries : []}
+  admin={admin}
+  signedIn={auth !== undefined}
+  counts={counts}
+  pending={pending}
+  timeZone={site.timezone}
+/>

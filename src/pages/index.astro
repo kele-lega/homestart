@@ -1,0 +1,43 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Page from '../zones/Page.astro';
+import ConfigErrorView from '../zones/ConfigErrorView.astro';
+import { ConfigError } from '../core/config-error';
+import { loadConfigFor } from '../adapters/preferences';
+import { userFrom } from '../core/api';
+import { reportWarningsOnce } from '../core/warnings';
+
+const FALLBACK_SITE = { title: '配置有误', lang: 'zh-CN', favicon: '/favicon.ico' } as const;
+
+// 配置有误时显示说明页而不是空白 500；其它异常照常抛出
+// 登录用户在设置页改过的偏好合并进配置；岛屿和 Widget 操作用的是同一份
+const result = await loadConfigFor(userFrom(Astro.request.headers, Astro.locals.auth)).then(
+  (config) => ({ config, error: undefined }),
+  (error: unknown) => {
+    if (error instanceof ConfigError) return { config: undefined, error };
+    throw error;
+  },
+);
+
+if (result.config) {
+  reportWarningsOnce(result.config, (message) => Astro.logger.warn(message));
+} else {
+  Astro.logger.error(result.error.message);
+  Astro.response.status = 500;
+}
+
+// 页头的头像按登录状态渲染（登录后印着名字的第一个字），版面按个人偏好渲染：只许浏览器自己留、每次都回来确认，代理不能缓存
+Astro.response.headers.set('cache-control', 'private, no-cache');
+---
+
+{
+  result.config ? (
+    <BaseLayout site={result.config.site}>
+      <Page config={result.config} />
+    </BaseLayout>
+  ) : (
+    <BaseLayout site={FALLBACK_SITE}>
+      <ConfigErrorView error={result.error} />
+    </BaseLayout>
+  )
+}

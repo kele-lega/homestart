@@ -1,0 +1,12 @@
+# 接口测试用的最小布局：一个搜索（默认 Bing 联想，测试里替换成假的上游）和一个没有接口的占位 Widget
+widgets:
+  - { id: search, type: search }
+  - { id: note, type: placeholder }
+
+zones:
+  - { id: main, items: [search, note] }
+
+page:
+  desktop:
+    columns: "1fr"
+    areas: ["main"]

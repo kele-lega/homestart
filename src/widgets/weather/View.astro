@@ -1,0 +1,81 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import Live from './Live.astro';
+import type { WeatherOptions } from './widget';
+
+type Props = WidgetViewProps<WeatherOptions>;
+
+const { id, options } = Astro.props;
+---
+
+<div class="weather">
+  {
+    options.label && (
+      <span class="place">
+        {options.label}
+        <span class="visually-hidden">天气</span>
+      </span>
+    )
+  }
+  <Live server:defer id={id}>
+    <Fragment slot="fallback">
+      <span class="condition skeleton" aria-hidden="true"></span>
+      <span class="temp skeleton" aria-hidden="true"></span>
+      <span class="visually-hidden">天气加载中</span>
+    </Fragment>
+  </Live>
+</div>
+
+<style>
+  /*
+   * 一行字：「北京  晴 15° · 24°/12°」，和时钟右边的日期一样大，排在日期下面（见 clock/View.astro）。
+   * Live.astro 的内容用 :global 选中；骨架和到达后的内容一样高，岛屿替换时这一行不跳
+   */
+  .weather {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
+    font: var(--text-sm) / 1.5 var(--label);
+    color: var(--ink-2);
+  }
+
+  .place {
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+  }
+
+  .weather :global(.temp) {
+    font-family: var(--num);
+    color: var(--ink);
+  }
+
+  .weather :global(.range) {
+    font: var(--text-xs) / 1.5 var(--num);
+    color: var(--ink-3);
+  }
+
+  .weather :global(.unavailable) {
+    color: var(--ink-3);
+  }
+
+  .skeleton {
+    display: inline-block;
+    block-size: 0.75rem;
+    background: var(--skeleton);
+  }
+
+  .condition.skeleton {
+    inline-size: 1.5rem;
+  }
+
+  .temp.skeleton {
+    inline-size: 4.5rem;
+  }
+
+  @media (width <= 48rem) {
+    .weather {
+      font-size: var(--text-xs);
+    }
+  }
+</style>

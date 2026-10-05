@@ -1,0 +1,6 @@
+{
+  "//": "只给 svelte-check 用：.astro 与测试文件由 astro check 负责，这里只检查 Svelte 组件（及其导入的模块）",
+  "extends": "./tsconfig.json",
+  "include": [".astro/types.d.ts", "src/**/*.svelte"],
+  "exclude": ["dist", "_source", "node_modules", "coverage"]
+}

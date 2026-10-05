@@ -1,0 +1,8 @@
+# 站点设置。修改后刷新页面即可生效。
+title: "我的主页"
+description: 个人主页
+favicon: /favicon.ico
+lang: zh-CN
+timezone: Asia/Shanghai
+# 页面背景图（放在 public/ 下），不设置则为纯色背景
+# background: /images/background.png

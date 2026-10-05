@@ -1,0 +1,136 @@
+import { getContainerRenderer } from '@astrojs/svelte/container-renderer';
+import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import { loadRenderers } from 'astro:container';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { recentVisits } from '../../../src/adapters/link-visits';
+import FavoritesView from '../../../src/widgets/favorites/View.astro';
+import type { WidgetHeading } from '../../../src/core/widget';
+import favorites from '../../../src/widgets/favorites/widget';
+import { viewContext, withoutDevAnnotations } from '../../helpers';
+
+vi.mock('../../../src/adapters/link-visits', () => ({ recentVisits: vi.fn() }));
+
+let container: AstroContainer;
+const HEADING: WidgetHeading = { title: '常用网站', level: 2 };
+const ALICE: App.Locals['auth'] = { sessionId: 7, userId: 2, username: 'alice', displayName: null, role: 'user' };
+const render = async (links: unknown, heading?: WidgetHeading, { auth, count = 4 }: { auth?: App.Locals['auth']; count?: number } = {}) =>
+  withoutDevAnnotations(
+    await container.renderToString(FavoritesView, {
+      props: { id: 'favorites', options: { count }, heading, ...viewContext({}, links) },
+      locals: { auth },
+    }),
+  );
+const hrefsOf = (html: string) => [...html.matchAll(/<a[^>]*\shref="([^"]+)"/g)].map((match) => match[1]);
+
+const LINKS = {
+  links: [
+    { name: 'GitHub', url: 'https://github.com', icon: '/icons/github.svg', iconDark: '/icons/github-light.svg', favorite: true },
+    { name: 'Docs', url: 'https://docs.example.com' },
+    { name: '哔哩哔哩', url: 'https://www.bilibili.com', favorite: true },
+  ],
+};
+
+beforeEach(() => {
+  vi.mocked(recentVisits).mockReset().mockResolvedValue([]);
+});
+
+beforeAll(async () => {
+  container = await AstroContainer.create({ renderers: await loadRenderers([getContainerRenderer()]) });
+});
+
+describe('favorites widget', () => {
+  it('shows four tiles by default and nothing else is configurable', () => {
+    expect(favorites.options.parse({})).toEqual({ count: 4 });
+    expect(favorites.options.safeParse({ count: 0 }).success).toBe(false);
+    expect(favorites.options.safeParse({ editable: true }).success).toBe(false);
+  });
+
+  it('draws its own head so the count can sit on the right', () => {
+    expect(favorites.head).toBe('view');
+  });
+});
+
+describe('favorites view', () => {
+  it('renders favorite links first, then the rest in config order, as new-tab tiles for anonymous visitors', async () => {
+    const html = await render(LINKS);
+
+    expect(hrefsOf(html)).toEqual(['https://github.com/', 'https://www.bilibili.com/', 'https://docs.example.com/']);
+    expect(recentVisits).toHaveBeenCalledWith('(anonymous)');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('renders light and dark icons, and derives a favicon when icon is omitted', async () => {
+    const html = await render(LINKS);
+
+    expect(html).toMatch(/src="\/icons\/github\.svg"[^>]*data-variant="light"/);
+    expect(html).toMatch(/src="\/icons\/github-light\.svg"[^>]*data-variant="dark"/);
+    // 哔哩哔哩没填 icon：按域名推导出 favicon.im 地址，不再是首字母
+    expect(html).toMatch(/src="https:\/\/a\.favicon\.im\/www\.bilibili\.com\?larger=true"/);
+    expect(html).not.toMatch(/class="letter[^"]*"[^>]*>哔</);
+    // 服务端渲染不能带内联事件属性（CSP）
+    expect(html).not.toMatch(/\son(error|load)=/);
+  });
+
+  it('falls back to the first letter when the icon is unusable', async () => {
+    // icon 为站内路径但文件不存在：运行时由 SiteIcon 的 error 监听退回首字母。
+    // 服务端渲染出的是 <img>，首字母只在浏览器里换上，这里断言图片地址正确即可。
+    const html = await render({ links: [{ name: '断链', url: 'https://x.com', icon: '/icons/not-found.svg', favorite: true }] });
+    expect(html).toMatch(/src="\/icons\/not-found\.svg"/);
+  });
+
+  it('points to the navigation settings when there are no links at all', async () => {
+    const html = await render({ links: [] });
+
+    expect(html).toContain('设置页的「导航」');
+    expect(html).not.toContain('<ul');
+  });
+
+  it("puts the signed-in user's recently visited sites first and fills up with favorites", async () => {
+    vi.mocked(recentVisits).mockResolvedValue(['https://docs.example.com/', 'https://www.bilibili.com/']);
+    const html = await render(LINKS, HEADING, { auth: ALICE, count: 3 });
+
+    expect(recentVisits).toHaveBeenCalledWith('alice');
+    expect(hrefsOf(html)).toEqual(['https://docs.example.com/', 'https://www.bilibili.com/', 'https://github.com/']);
+    expect(html).toMatch(/<h2 class="l-frame-title">常用网站<\/h2>\s*<span class="l-frame-sub">最近点开<\/span>/);
+    expect(html.match(/data-visit/g)).toHaveLength(3);
+    // 登录了才在页面上留记录点击的标记
+    expect(html).toContain('data-link-visits');
+  });
+
+  it('shows at most count tiles', async () => {
+    vi.mocked(recentVisits).mockResolvedValue(['https://docs.example.com/']);
+    expect(hrefsOf(await render(LINKS, undefined, { auth: ALICE, count: 1 }))).toEqual(['https://docs.example.com/']);
+  });
+
+  it('falls back to the configured favorites when the visits cannot be read', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.mocked(recentVisits).mockRejectedValue(new Error('disk'));
+
+    expect(hrefsOf(await render(LINKS, undefined, { auth: ALICE, count: 2 }))).toEqual(['https://github.com/', 'https://www.bilibili.com/']);
+  });
+
+  it('does not track clicks for anonymous visitors', async () => {
+    expect(await render(LINKS)).not.toContain('data-link-visits');
+  });
+
+  it('keeps the heading plain until there are visits', async () => {
+    const html = await render(LINKS, HEADING);
+
+    expect(html).toContain('<h2 class="l-frame-title">常用网站</h2>');
+    expect(html).not.toContain('l-frame-sub');
+  });
+
+  it('keeps the heading but drops the note when there are no favorites', async () => {
+    const html = await render({ links: [{ name: 'Docs', url: 'https://docs.example.com' }] }, HEADING);
+
+    expect(html).toContain('<h2 class="l-frame-title">常用网站</h2>');
+    expect(html).not.toContain('l-frame-sub');
+  });
+
+  it('has no head when the instance has no title', async () => {
+    const html = await render(LINKS);
+
+    expect(html).not.toContain('l-frame-head');
+  });
+});

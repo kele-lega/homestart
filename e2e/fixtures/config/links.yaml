@@ -1,0 +1,58 @@
+# E2E 专用链接：只用 public/icons 下的本地图标；名字挑过，搜索结果可预测
+# （任何名称、关键词、域名都不含 "ab" 的子序列，搜 "ab" 时没有网站行）
+categories:
+  - { id: dev, name: 开发, tone: blue }
+  - { id: work, name: 办公, tone: peach }
+  - { id: fun, name: 娱乐, tone: pink }
+
+links:
+  # 浅色 / 深色成对的图标
+  - name: GitHub
+    url: https://github.com
+    icon: /icons/github.svg
+    iconDark: /icons/github-light.svg
+    description: 代码托管
+    category: dev
+    favorite: true
+  - name: 云主机
+    url: https://cloud.example.net/
+    icon: /icons/google-cloud.svg
+    category: dev
+    keywords: [vps, server]
+  # 图标路径 404，应退回首字母
+  - name: 断链工具
+    url: https://broken.example.org/
+    icon: /icons/not-found.svg
+    category: dev
+
+  - name: Gmail
+    url: https://mail.google.com/
+    icon: /icons/gmail.svg
+    category: work
+    favorite: true
+  # 只能靠关键词 translate 搜到
+  - name: 百度翻译
+    url: https://fanyi.baidu.com/
+    icon: /icons/google-translate.svg
+    category: work
+    keywords: [fanyi, translate]
+  - name: 日历
+    url: https://calendar.google.com/
+    icon: /icons/google-calendar.svg
+    category: work
+    favorite: true
+
+  - name: 哔哩哔哩
+    url: https://www.bilibili.com/
+    icon: /icons/bilibili.svg
+    category: fun
+    favorite: true
+    keywords: [bili]
+  - name: 抖音
+    url: https://www.douyin.com/
+    icon: /icons/tiktok.svg
+    category: fun
+  # 不填 icon：按域名推导。e2e 把所有外网请求 stub 成 HTML，图标加载失败后应退回首字母
+  - name: 无图标站
+    url: https://noicon.example.com/
+    category: fun

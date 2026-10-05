@@ -1,0 +1,15 @@
+# widget-data 测试用：probe 有 load，silent 没有，note 是另一种类型，broken 的 options 不合法
+widgets:
+  - { id: probe, type: probe, options: { city: 坪山 } }
+  - { id: silent, type: silent }
+  - { id: note, type: placeholder }
+  - { id: broken, type: probe, options: { city: 1 } }
+
+zones:
+  - id: main
+    items: [probe, silent, note, broken]
+
+page:
+  desktop:
+    columns: "1fr"
+    areas: ["main"]

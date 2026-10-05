@@ -1,0 +1,18 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import { localDateKey } from '../../lib/zoned-time';
+import Calendar from './Calendar.svelte';
+import { monthGrid } from './month';
+import { monthOfDate } from './month-key';
+import type { CalendarOptions } from './widget';
+
+type Props = WidgetViewProps<CalendarOptions>;
+
+// 本月的格子在服务端画好（农历、节日、法定节假日的数据不进浏览器），页面一出来就有；
+// 日程由 Calendar.svelte 挂载后经 month 操作取回，不拖慢首屏
+const { id, site, heading } = Astro.props;
+const today = localDateKey(Date.now(), site.timezone);
+const initial = monthGrid(monthOfDate(today), today);
+---
+
+<Calendar client:load id={id} heading={heading} initial={initial} today={today} timeZone={site.timezone} />

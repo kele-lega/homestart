@@ -1,0 +1,51 @@
+---
+import type { ConfigError } from '../core/config-error';
+
+interface Props {
+  readonly error: ConfigError;
+}
+
+// 站点在 Basic Auth 之后，只有站长能看到，直接展示具体问题方便修改
+const { error } = Astro.props;
+---
+
+<main class="config-error">
+  <h1>配置文件 {error.file} 有误</h1>
+  <ul>
+    {error.problems.map((problem) => <li>{problem}</li>)}
+  </ul>
+  <p>修改 config/{error.file} 后刷新页面即可，不需要重启。</p>
+</main>
+
+<style>
+  /* 和页面上的板块同一种样子：顶上一道粗线，底下细线 */
+  .config-error {
+    display: grid;
+    gap: var(--space-4);
+    inline-size: min(100% - 2rem, 40rem);
+    margin: var(--space-10) auto;
+    padding-block: 0.875rem var(--space-5);
+    border-block-start: var(--rule-heavy);
+    border-block-end: var(--rule-thin);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  ul {
+    display: grid;
+    gap: var(--space-2);
+    padding-inline-start: var(--space-5);
+    font: var(--text-sm) / 1.6 var(--mono);
+    color: var(--red);
+    overflow-wrap: anywhere;
+  }
+
+  p {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+</style>

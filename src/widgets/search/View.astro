@@ -1,0 +1,21 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import Search from './Search.svelte';
+import { toSiteEntry } from './sites';
+import type { SearchOptions } from './widget';
+
+type Props = WidgetViewProps<SearchOptions>;
+
+const { id, options, links } = Astro.props;
+// 只把前端需要的公开字段（名称、地址、关键词、图标）交给浏览器
+const sites = options.sites ? links.links.map(toSiteEntry) : [];
+---
+
+<Search
+  client:load
+  id={id}
+  engine={options.engines[0]!}
+  sites={sites}
+  suggest={options.suggest !== false}
+  placeholder={options.placeholder}
+/>

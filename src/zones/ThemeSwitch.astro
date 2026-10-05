@@ -1,0 +1,116 @@
+---
+// 主题三选一：跟随系统 / 浅色 / 深色。选中态由 <html data-theme> 驱动，首屏即正确；
+// aria-checked 与 roving tabindex 由 client/theme.ts 同步
+const OPTIONS = [
+  {
+    value: 'system',
+    label: '跟随系统',
+    paths: ['M2.5 3.5h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Z', 'M5.5 14h5'],
+  },
+  {
+    value: 'light',
+    label: '浅色',
+    paths: [
+      'M8 5.25a2.75 2.75 0 1 1 0 5.5 2.75 2.75 0 0 1 0-5.5Z',
+      'M8 1.5v1.25M8 13.25v1.25M1.5 8h1.25M13.25 8h1.25M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9',
+    ],
+  },
+  {
+    value: 'dark',
+    label: '深色',
+    paths: ['M13.5 8.6A5.5 5.5 0 1 1 7.4 2.5a4.3 4.3 0 0 0 6.1 6.1Z'],
+    sparkle: 'M12 2.6l.45 1.15L13.6 4.2l-1.15.45L12 5.8l-.45-1.15L10.4 4.2l1.15-.45Z',
+  },
+] as const;
+---
+
+<div class="theme-switch" role="radiogroup" aria-label="配色主题">
+  <span class="thumb" aria-hidden="true"></span>
+  {
+    OPTIONS.map((option) => (
+      <button
+        type="button"
+        class="option"
+        role="radio"
+        data-theme-option={option.value}
+        aria-checked={option.value === 'system' ? 'true' : 'false'}
+        tabindex={option.value === 'system' ? 0 : -1}
+        title={option.label}
+      >
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          {option.paths.map((d) => (
+            <path d={d} />
+          ))}
+          {'sparkle' in option && <path class="sparkle" d={option.sparkle} />}
+        </svg>
+        <span class="visually-hidden">{option.label}</span>
+      </button>
+    ))
+  }
+</div>
+
+<script>
+  import '../client/theme';
+</script>
+
+<style>
+  .theme-switch {
+    position: relative;
+    display: inline-flex;
+  }
+
+  /* 选中项下面一道墨线，跟着 data-theme 滑动，每档正好一个按钮宽 */
+  .thumb {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0.375rem;
+    width: 0.75rem;
+    height: 2px;
+    background: var(--ink);
+    transition: translate var(--dur-open) var(--spring);
+  }
+
+  :global(:root[data-theme='light']) .thumb {
+    translate: 1.5rem 0;
+  }
+
+  :global(:root[data-theme='dark']) .thumb {
+    translate: 3rem 0;
+  }
+
+  .option {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    color: var(--ink-3);
+    background: none;
+    border: 0;
+  }
+
+  /* 悬停只换颜色、不做过渡：移动感由墨线承担 */
+  .option:hover {
+    color: var(--sakura-deep);
+  }
+
+  :global(:root:not([data-theme='light'], [data-theme='dark'])) .option[data-theme-option='system'],
+  :global(:root[data-theme='light']) .option[data-theme-option='light'],
+  :global(:root[data-theme='dark']) .option[data-theme-option='dark'] {
+    color: var(--ink);
+  }
+
+  svg {
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .sparkle {
+    fill: currentcolor;
+    stroke: none;
+  }
+</style>

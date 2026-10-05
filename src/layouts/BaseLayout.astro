@@ -1,0 +1,71 @@
+---
+import type { SiteConfig } from '../core/site';
+import { SIGNED_IN_FLAG, type Leaf } from '../lib/page-turn';
+import { THEMES, THEME_STORAGE_KEY } from '../lib/theme';
+import '../styles/tokens.css';
+import '../styles/tones.css';
+import '../styles/base.css';
+import '../styles/sheet.css';
+import '../styles/page-turn.css';
+
+interface Props {
+  readonly site: Pick<SiteConfig, 'title' | 'lang' | 'favicon'> & Partial<SiteConfig>;
+  /** 活页夹里的哪一张：首页是最上面的 cover，登录页、个人中心是底下的 inner，决定翻页的方向 */
+  readonly leaf?: Leaf;
+}
+
+const { site, leaf = 'cover' } = Astro.props;
+// background 已由 site.yaml 的 schema 限制为站内路径，可以安全放进 url()
+const bodyStyle = site.background ? { '--bg-image': `url("${site.background}")` } : undefined;
+---
+
+<!doctype html>
+<html lang={site.lang} data-theme="system" data-leaf={leaf}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- 私有门户：点出去的链接、搜索和远程图标都不带本站地址。
+         同源请求照常带上：no-referrer 会让同源 POST 的 Origin 变成 null，被 Astro 的来源校验拒绝 -->
+    <meta name="referrer" content="same-origin" />
+    <title>{site.title}</title>
+    {site.description && <meta name="description" content={site.description} />}
+    <link rel="icon" href={site.favicon} />
+    <!-- 绘制前应用保存的主题，避免先闪一下浅色 -->
+    <script is:inline define:vars={{ themes: THEMES, storageKey: THEME_STORAGE_KEY }}>
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (themes.includes(saved)) document.documentElement.dataset.theme = saved;
+      } catch {
+        // 存储不可用时保持跟随系统
+      }
+    </script>
+    <!--
+      翻页方向（styles/page-turn.css）：pagereveal 在新页第一次绘制前触发，必须在 <head> 里同步注册。
+      到首页是往回翻，到其它页是往里翻；data-turn 只在翻页进行中存在。
+      刚登录成功（登录页写下的标记）另记 data-arrival，页头的头像据此弹出来，浏览器不支持翻页时照样有
+    -->
+    <script is:inline define:vars={{ signedInFlag: SIGNED_IN_FLAG }}>
+      const root = document.documentElement;
+      try {
+        if (sessionStorage.getItem(signedInFlag)) {
+          sessionStorage.removeItem(signedInFlag);
+          root.dataset.arrival = 'signed-in';
+        }
+      } catch {
+        // 存储不可用：少一个落下的动作而已
+      }
+      addEventListener('pagereveal', (event) => {
+        const transition = event.viewTransition;
+        if (!transition) return;
+        const turn = root.dataset.leaf === 'cover' ? 'back' : 'forward';
+        root.dataset.turn = turn;
+        const done = () => delete root.dataset.turn;
+        transition.finished.then(done, done);
+      });
+    </script>
+  </head>
+  <body style={bodyStyle}>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,74 @@
+# 页面布局，三层：Widget 实例 → 区域（zone）→ 页面网格。
+#   widgets：Widget 实例。type 对应 src/widgets/<type>/ 目录，options 由该 Widget 自己校验
+#   zones：区域只负责摆放。items 里的数组表示桌面端合并为一栏
+#     layout：stack 纵向 / grid 等宽多列（columns）/ areas 命名区域（areas + columns）
+#     narrowAreas / narrowColumns：窄窗口（手机和宽屏之间）换一套摆法；mobileAreas / mobileColumns 是手机的
+#     mobile：flatten 拆开参与整页排序 / block 整体保留 / collapse 整体保留且可折叠
+#     dividers：格子之间画细线，none / columns 竖线 / rows 横线 / both
+#     masthead：报头样式，上方粗细双线、下方一道细线
+#   page.desktop：区域在桌面端的网格；page.mobile.order：手机端从上到下的顺序
+# 新增 Widget：在 src/widgets/ 新建目录，再在这里加一个实例并放进某个区域即可。
+
+widgets:
+  - { id: clock, type: clock, options: { seconds: false } }
+  - { id: search, type: search }
+  # 和时钟合成一张卡片，排在日期下面、时间右边
+  - { id: weather, type: weather, options: { label: 北京, latitude: 39.9, longitude: 116.39 } }
+  # 页头右边三个圆：头像（悬停展开账号面板）、设置、公告（管理员在弹窗里发布）
+  - { id: toolbar, type: toolbar }
+  # 日历、Deadline 读同一份 ICS 订阅（按登录用户保存，在设置页填写）
+  # 天气、搜索、时钟、Deadline、Steam 的 options 是默认值，登录用户可以在设置页（/settings）改成自己的
+  - { id: calendar, type: calendar }
+  - { id: deadline, type: deadline, options: { max: 5, days: 90 } }
+  - { id: favorites, type: favorites, title: 常用网站 }
+  - { id: steam, type: steam }
+  # 本站：导航、搜索次数（翻页计数）和提建议，所有人都看得到；管理员多一排工具，还能翻到背面看服务器状态和下面这些入口
+  - id: server
+    type: server
+    options:
+      entries:
+        - { name: terminal, url: https://terminal.example.com, description: 网页终端（示例） }
+        - { name: api, url: https://api.example.com, description: 接口管理（示例） }
+  - { id: categories, type: link-groups }
+
+zones:
+  # 页头：时间和天气、搜索、三个圆。两侧等宽，搜索框正好在正中；窄窗口和手机上搜索框换到第二行占满
+  - id: header
+    layout: areas
+    areas: ["clock search toolbar"]
+    columns: "minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr)"
+    narrowAreas: ["clock toolbar", "search search"]
+    narrowColumns: "minmax(0, 1fr) auto"
+    mobile: block
+    mobileAreas: ["clock toolbar", "search search"]
+    mobileColumns: "minmax(0, 1fr) auto"
+    align: center
+    masthead: true
+    items: [[clock, weather], search, toolbar]
+
+  # 分类导航：紧挨在页头下面单独一排，自己排版（桌面一排索引签、手机一列）；不设标题，顶上也就没有粗线
+  - id: nav
+    mobile: block
+    items: [categories]
+
+  - id: side
+    items: [calendar, deadline]
+
+  # 插件区：Steam 卡片按内容大小，右边一格是本站（管理员能翻到服务器）
+  - id: main
+    layout: areas
+    areas: ["favorites favorites", "steam server"]
+    columns: "minmax(0, 1.35fr) minmax(0, 1fr)"
+    align: start
+    items: [favorites, steam, server]
+
+page:
+  desktop:
+    columns: "minmax(21rem, 1fr) minmax(0, 1.44fr)"
+    dividers: columns
+    areas:
+      - "header header"
+      - "nav nav"
+      - "side main"
+  mobile:
+    order: [header, nav, deadline, favorites, calendar, steam, server]

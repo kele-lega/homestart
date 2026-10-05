@@ -1,0 +1,121 @@
+/*
+ * 翻页：跨页面的 View Transitions（Chrome / Edge 126+、Safari 18.2+）。
+ * 首页是活页夹最上面那一张，去登录页、个人中心时它绕左边的装订孔翻起来、露出底下那页；回首页时它再翻回来盖上。
+ * 方向由 BaseLayout 在 pagereveal 里写的 <html data-turn="forward|back"> 决定，只在翻页进行中存在，
+ * 所以主题切换（同一页里的 View Transition，见 client/theme.ts）仍是 base.css 里的交叉淡化，互不干扰。
+ * 不支持的浏览器、或要求减少动态效果时直接跳转，没有过程。
+ *
+ * 几何：铰链在屏幕左缘，视点在屏幕正中、离屏幕 3.5 个屏宽。视点在正中，翻起来的纸页右缘会朝人鼓起、
+ * 越过屏幕中线往左扫过去，像从头顶看一页纸翻过去；只写 perspective 的话视点落在铰链上，纸页只会像门一样缩成左边一条线。
+ * 这个距离下纸页转到约 82° 就侧对视线，再往后是背面（隐藏），所以往里翻转到 85°、往回翻从 83° 起。
+ * 两条曲线按右缘在屏幕上的位置调过：
+ * - 往里翻：前 25% 是掀起（右缘鼓起、影子出现），60% 时扫过屏幕中线，87% 时带着速度从左边离开
+ * - 往回翻：一开始就在动，25% 盖住半屏、52% 盖满，后一半从 16° 慢慢放平
+ */
+@view-transition {
+  navigation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
+html[data-turn]::view-transition-group(root) {
+  animation-duration: var(--dur-turn);
+}
+
+/* 两张快照各自整张画，不做默认的交叉淡化；谁压在上面由方向决定 */
+html[data-turn]::view-transition-old(root),
+html[data-turn]::view-transition-new(root) {
+  mix-blend-mode: normal;
+  transform-origin: 0 50%;
+  backface-visibility: hidden;
+  animation-duration: var(--dur-turn);
+  animation-fill-mode: both;
+}
+
+/*
+ * 翻动的那一页带着影子：落在它右缘外侧，纸页平放时在屏幕外，掀起来才落到底下那页上，跟着右缘走。
+ * 影子只是静态的 box-shadow，随纸页一起变换，不必每帧重画
+ */
+html[data-turn='forward']::view-transition-old(root),
+html[data-turn='back']::view-transition-new(root) {
+  z-index: 1;
+  box-shadow: 4vw 0 9vw -1vw var(--turn-shadow);
+}
+
+/* 往里翻：旧的首页翻起来；底下的新页从影子里亮起来 */
+html[data-turn='forward']::view-transition-old(root) {
+  animation-name: leaf-lift;
+  animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1);
+}
+
+html[data-turn='forward']::view-transition-new(root) {
+  animation-name: leaf-uncover;
+  animation-timing-function: var(--ease-in-out);
+}
+
+/* 往回翻：新的首页从左边翻回来盖住；底下的旧页跟着暗下去 */
+html[data-turn='back']::view-transition-new(root) {
+  animation-name: leaf-settle;
+  animation-timing-function: cubic-bezier(0.35, 0.2, 0.25, 1);
+}
+
+html[data-turn='back']::view-transition-old(root) {
+  animation-name: leaf-cover;
+  animation-timing-function: var(--ease-in-out);
+}
+
+/*
+ * translateX(50%) perspective() translateX(-50%)：把透视的视点从变换原点（铰链）挪到屏幕正中。
+ * 纸页越竖越背光，稍微暗一点
+ */
+@keyframes leaf-lift {
+  from {
+    transform: translateX(50%) perspective(350vw) translateX(-50%) rotateY(0deg);
+    filter: brightness(1);
+  }
+
+  to {
+    transform: translateX(50%) perspective(350vw) translateX(-50%) rotateY(-85deg);
+    filter: brightness(0.92);
+  }
+}
+
+@keyframes leaf-settle {
+  from {
+    transform: translateX(50%) perspective(350vw) translateX(-50%) rotateY(-83deg);
+    filter: brightness(0.92);
+  }
+
+  to {
+    transform: translateX(50%) perspective(350vw) translateX(-50%) rotateY(0deg);
+    filter: brightness(1);
+  }
+}
+
+/* 底下那页：纸页掀起之前一直在它的影子里，右缘扫过时跟着亮起来（中点对齐右缘过屏幕中线的时刻） */
+@keyframes leaf-uncover {
+  from,
+  25% {
+    filter: brightness(0.94);
+  }
+
+  to {
+    filter: brightness(1);
+  }
+}
+
+/* 被盖住的那页：在盖满（52%）之前暗下去 */
+@keyframes leaf-cover {
+  from {
+    filter: brightness(1);
+  }
+
+  55%,
+  to {
+    filter: brightness(0.94);
+  }
+}

@@ -1,0 +1,199 @@
+---
+import FrameHead from '../../components/FrameHead.astro';
+import SiteIcon from '../../components/SiteIcon.svelte';
+import { recentVisits } from '../../adapters/link-visits';
+import { ANONYMOUS, userFrom } from '../../core/api';
+import { logBackgroundError } from '../../core/log';
+import type { WidgetViewProps } from '../../core/widget';
+import { pickFavorites } from './pick';
+import type { FavoritesOptions } from './widget';
+
+type Props = WidgetViewProps<FavoritesOptions>;
+
+const { links, heading, options } = Astro.props;
+// 首页按登录状态渲染、不进共享缓存（见 pages/index.astro），这里可以直接按用户读点击记录
+const user = userFrom(Astro.request.headers, Astro.locals.auth);
+const recent = await recentVisits(user).catch((error: unknown) => {
+  logBackgroundError('link-visits', `${user} 的点击记录读取失败，常用网站按配置顺序显示`, error);
+  return [];
+});
+const favorites = pickFavorites(links.links, recent, options.count);
+const tracking = user !== ANONYMOUS;
+/** 格子右上角的页码：01、02… */
+const pageNo = (index: number) => String(index + 1).padStart(2, '0');
+---
+
+{heading && <FrameHead heading={heading} sub={recent.length > 0 ? '最近点开' : undefined} />}
+{
+  favorites.length > 0 ? (
+    <ul class="favorites" role="list">
+      {favorites.map((link, index) => (
+        <li>
+          <a
+            class="tile"
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={link.description}
+            data-visit
+          >
+            <SiteIcon name={link.name} icon={link.icon} iconDark={link.iconDark} size="md" />
+            <span class="name">{link.name}</span>
+            <span class="no" aria-hidden="true">{pageNo(index)}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">
+      {tracking ? '在分类导航或搜索里点开网站，最近点过的会出现在这里；' : '登录后，最近点开过的网站会出现在这里；'}
+      导航里还没有网站时，可以先在设置页的「导航」里添加。
+    </p>
+  )
+}
+{/* 登录了才记点击：页面上任何带 data-visit 的链接被点开时报给服务端 */}
+{tracking && <span hidden data-link-visits />}
+
+<script>
+  import './track';
+</script>
+
+<style>
+  /* 索引页式的细线表格：外框的上、左两条线画在列表上，每一格只画自己的右、下两条 */
+  .favorites {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 0;
+    list-style: none;
+    border-block-start: var(--rule-thin);
+    border-inline-start: var(--rule-thin);
+  }
+
+  .tile {
+    position: relative;
+    display: grid;
+    gap: 1.75rem;
+    padding: 1.25rem 1rem 1rem;
+    border-inline-end: var(--rule-thin);
+    border-block-end: var(--rule-thin);
+    isolation: isolate;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 格子挨着格子，焦点框往里收，免得压到隔壁格的细线 */
+  .tile:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* 悬停底色放在伪元素上，只过渡 opacity */
+  .tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--sakura-wash);
+    opacity: 0;
+    transition: opacity var(--dur-hover) var(--ease-out);
+  }
+
+  .tile :global(.site-icon) {
+    transition: translate var(--dur-hover) var(--spring);
+  }
+
+  /* 名字只占一行，放不下用省略号收尾；读屏照样读完整名字 */
+  .name {
+    position: relative;
+    justify-self: start;
+    max-inline-size: 100%;
+    padding-block-end: 0.25rem;
+    overflow: hidden;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* 名字下划线从左往右画出来 */
+  .name::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    block-size: 2px;
+    background: var(--sakura-deep);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-hover) var(--ease-out);
+  }
+
+  .no {
+    position: absolute;
+    inset-block-start: 0.875rem;
+    inset-inline-end: 0.75rem;
+    font: italic var(--text-xs) / 1 var(--serif);
+    color: var(--ink-3);
+  }
+
+  .no::before {
+    content: 'p.';
+  }
+
+  /* 悬停只给有鼠标的设备；键盘 Tab 到格子上也是同样的反馈 */
+  @media (hover: hover) {
+    .tile:hover::before {
+      opacity: 1;
+    }
+
+    .tile:hover :global(.site-icon) {
+      translate: 0 -2px;
+    }
+
+    .tile:hover .name::after {
+      transform: none;
+    }
+  }
+
+  .tile:focus-visible::before,
+  .tile:active::before {
+    opacity: 1;
+  }
+
+  .tile:focus-visible :global(.site-icon) {
+    translate: 0 -2px;
+  }
+
+  .tile:focus-visible .name::after {
+    transform: none;
+  }
+
+  /* 按卡片宽度而不是屏幕宽度切换：格子窄时图标和名字居中叠放，页码收起 */
+  @container widget (inline-size <= 30rem) {
+    .tile {
+      justify-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 0.25rem 0.5rem;
+    }
+
+    .name {
+      justify-self: center;
+      font-size: 0.6875rem;
+    }
+
+    .no {
+      display: none;
+    }
+  }
+
+  .empty {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .empty code {
+    padding: 0.05em 0.35em;
+    font: 0.92em var(--mono);
+    color: var(--ink);
+    border: var(--rule-thin);
+  }
+</style>

@@ -1,0 +1,19 @@
+# 个人偏好测试用的布局：每种能设置的 Widget 各放一个，另有一个配置写错的天气和一张合并卡片里的 Deadline
+widgets:
+  - { id: clock, type: clock, options: { seconds: false } }
+  - { id: search, type: search, options: { engines: [bing, google], suggest: false } }
+  - { id: weather, type: weather, options: { label: 北京, latitude: 39.9, longitude: 116.39 } }
+  - { id: broken-weather, type: weather, options: { latitude: 200, longitude: 0 } }
+  - { id: calendar, type: calendar }
+  - { id: deadline, type: deadline }
+  - { id: steam, type: steam }
+  - { id: note, type: placeholder }
+
+zones:
+  - { id: top, items: [clock, search, weather, broken-weather] }
+  - { id: side, items: [[calendar, deadline], steam, note] }
+
+page:
+  desktop:
+    columns: "1fr"
+    areas: ["top", "side"]

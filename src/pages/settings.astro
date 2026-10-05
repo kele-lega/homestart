@@ -1,0 +1,80 @@
+---
+import { readSyncSettings } from '../adapters/calendar/google-sync';
+import { readCalendarSettings } from '../adapters/calendar/service';
+import { readPreferences } from '../adapters/preferences';
+import { readSteamBinding } from '../adapters/steam/service';
+import { readUserLinks } from '../adapters/user-links';
+import SettingsSheet from '../components/settings/SettingsSheet.svelte';
+import { ANONYMOUS, userFrom } from '../core/api';
+import { ConfigError } from '../core/config-error';
+import { loadConfig } from '../core/runtime';
+import { hasWidget, preferenceSections } from '../core/settings-view';
+import { loadSiteOrDefault } from '../core/site-page';
+import { fromLinksConfig } from '../core/user-links';
+import LeafLayout from '../layouts/LeafLayout.astro';
+import { DEADLINE_LIMITS } from '../widgets/deadline/widget';
+import { STEAM_MAX_COUNT } from '../widgets/steam/widget';
+
+// 设置页：身份和 Widget 操作一样取 userFrom（站内登录优先，没有时退回反代注入的用户名）；匿名只给一个去登录的入口。
+// 默认值要的是 layout.yaml 里原本的那份配置，这里不合并偏好
+const user = userFrom(Astro.request.headers, Astro.locals.auth);
+const name = Astro.locals.auth ? (Astro.locals.auth.displayName ?? Astro.locals.auth.username) : user;
+
+// 页面里有订阅地址的主机名和 SteamID：不留任何缓存，登出后按「后退」也不会从往返缓存里翻出来
+Astro.response.headers.set('cache-control', 'private, no-store');
+const site = await loadSiteOrDefault((message) => Astro.logger.error(message));
+
+async function loadSheet() {
+  const config = await loadConfig().catch((error: unknown) => {
+    if (error instanceof ConfigError) return undefined;
+    throw error;
+  });
+  if (!config) return undefined;
+  const navigation = hasWidget(config, 'link-groups');
+  const calendarWidgets = hasWidget(config, 'calendar', 'agenda', 'deadline');
+  const [preferences, calendar, calendarSync, steam, links] = await Promise.all([
+    readPreferences(user),
+    calendarWidgets ? readCalendarSettings(user) : undefined,
+    // 新建日程在月历版块里；没有月历就不必写回 Google
+    hasWidget(config, 'calendar') ? readSyncSettings(user) : undefined,
+    hasWidget(config, 'steam') ? readSteamBinding(user) : undefined,
+    navigation ? readUserLinks(user) : undefined,
+  ]);
+  // 导航的默认值是 links.yaml 换算成的同样形状：没编辑过时从它开始改
+  const linksSection = navigation ? { defaults: fromLinksConfig(config.links), saved: links } : undefined;
+  return { sections: preferenceSections(config, preferences), calendar, calendarSync, steam, links: linksSection };
+}
+
+const sheet = user === ANONYMOUS ? undefined : await loadSheet();
+---
+
+<LeafLayout site={site} heading="设置" width="wide">
+  {
+    user === ANONYMOUS ? (
+      <section class="leaf-card" aria-labelledby="settings-login">
+        <div class="leaf-card-head">
+          <h1 class="leaf-card-title" id="settings-login">设置</h1>
+        </div>
+        <p class="leaf-notice">天气地区、搜索引擎、网站导航、日历订阅、Steam 账号这些设置跟着账号走，登录后才能修改。</p>
+        <div class="leaf-actions">
+          <a class="leaf-btn" data-kind="primary" href="/login">登录</a>
+        </div>
+      </section>
+    ) : sheet ? (
+      <SettingsSheet
+        client:load
+        name={name}
+        sections={sheet.sections}
+        calendar={sheet.calendar}
+        calendarSync={sheet.calendarSync}
+        steam={sheet.steam}
+        links={sheet.links}
+        limits={{ deadline: DEADLINE_LIMITS, steamCount: STEAM_MAX_COUNT }}
+      />
+    ) : (
+      <p class="leaf-notice" data-kind="error">
+        站点配置有误，暂时不能修改设置。
+      </p>
+    )
+  }
+</LeafLayout>

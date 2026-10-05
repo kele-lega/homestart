@@ -1,0 +1,11 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import Steam from './Steam.svelte';
+import type { SteamOptions } from './widget';
+
+type Props = WidgetViewProps<SteamOptions>;
+
+const { id, options, heading } = Astro.props;
+---
+
+<Steam client:load id={id} heading={heading} count={options.count} />

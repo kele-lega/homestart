@@ -1,0 +1,21 @@
+---
+/**
+ * 版块的栏目头：栏目名在左，补充说明靠右，下面一道细线（样式在 zones/frame.css）。
+ * 外框和自己画栏目头的 View（head: 'view'）共用这一份标记；Calendar.svelte 翻月时要更新说明，照抄了同样的标记
+ */
+import type { WidgetHeading } from '../core/widget';
+
+interface Props {
+  readonly heading: WidgetHeading;
+  /** 例如「3 件日程」；读屏读完标题接着读到它 */
+  readonly sub?: string | undefined;
+}
+
+const { heading, sub } = Astro.props;
+const Heading = `h${heading.level}` as const;
+---
+
+<div class="l-frame-head">
+  <Heading class="l-frame-title">{heading.title}</Heading>
+  {sub && <span class="l-frame-sub">{sub}</span>}
+</div>

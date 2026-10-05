@@ -1,0 +1,57 @@
+---
+import { GEAR } from '../lib/icons';
+
+// 登录页、个人中心、设置页顶栏上主题切换旁边的小齿轮：进设置页。在设置页本身时标成当前页，颜色压深一档。
+// 首页的设置入口是页头右边的圆（widgets/toolbar）
+const current = Astro.url.pathname === '/settings';
+---
+
+<a class="settings-link" href="/settings" title="设置" aria-current={current ? 'page' : undefined}>
+  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+    {GEAR.map((d) => <path d={d} />)}
+  </svg>
+  <span class="visually-hidden">设置</span>
+</a>
+
+<style>
+  .settings-link {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--ink-3);
+  }
+
+  .settings-link[aria-current='page'] {
+    color: var(--ink);
+  }
+
+  /* 悬停时换色并转一个齿的角度；动效偏好关掉时只换色 */
+  svg {
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    transition: rotate var(--dur-open) var(--spring);
+  }
+
+  @media (hover: hover) {
+    .settings-link:hover {
+      color: var(--sakura-deep);
+    }
+
+    .settings-link:hover svg {
+      rotate: 45deg;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    svg {
+      transition: none;
+    }
+
+    .settings-link:hover svg {
+      rotate: none;
+    }
+  }
+</style>

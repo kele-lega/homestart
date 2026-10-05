@@ -1,0 +1,72 @@
+---
+import type { ResolvedZone } from '../core/layout';
+import type { ViewContext } from '../core/widget';
+import WidgetFrame from './WidgetFrame.astro';
+
+interface Props {
+  readonly zone: ResolvedZone;
+  readonly ctx: ViewContext;
+}
+
+const { zone, ctx } = Astro.props;
+const collapsible = zone.mobile.mode === 'collapse';
+// id 只允许小写字母、数字和连字符，用 _ 拼接派生 id 不会与任何区域或 Widget 的 id 撞车
+const panelId = `z-${zone.id}_panel`;
+// 手机端 flatten 时标题只是视觉隐藏，层级不变
+const headingLevel = zone.title ? 3 : 2;
+
+const zoneStyle = { '--area': zone.id, '--order-m': zone.order?.toString() };
+const bodyStyle = {
+  '--zone-areas': zone.areas,
+  '--zone-columns': zone.columns,
+  '--zone-areas-m': zone.mobile.areas,
+  '--zone-columns-m': zone.mobile.columns,
+  '--zone-areas-n': zone.narrow.areas,
+  '--zone-columns-n': zone.narrow.columns,
+};
+---
+
+<div
+  class="l-zone"
+  id={`z-${zone.id}`}
+  data-mobile={zone.mobile.mode}
+  data-masthead={zone.masthead || undefined}
+  style={zoneStyle}
+>
+  {
+    zone.title && (
+      <h2 class="l-zone-title">
+        <span class="l-zone-label">{zone.title}</span>
+        {collapsible && (
+          <button type="button" class="l-zone-toggle" data-disclosure aria-expanded="false" aria-controls={panelId}>
+            {zone.title}
+            <span class="l-zone-chevron" aria-hidden="true" />
+          </button>
+        )}
+      </h2>
+    )
+  }
+  <div class="l-zone-panel" id={collapsible ? panelId : undefined}>
+    <div
+      class="l-zone-body"
+      data-layout={zone.layout}
+      data-align={zone.align}
+      data-dividers={zone.dividers === 'none' ? undefined : zone.dividers}
+      style={bodyStyle}
+    >
+      {
+        zone.items.map((item) =>
+          item.kind === 'card' ? (
+            <div class="l-card" style={{ '--area': item.id }}>
+              {item.widgets.map((widget) => (
+                <WidgetFrame widget={widget} headingLevel={headingLevel} ctx={ctx} />
+              ))}
+            </div>
+          ) : (
+            <WidgetFrame widget={item} headingLevel={headingLevel} ctx={ctx} />
+          ),
+        )
+      }
+    </div>
+  </div>
+</div>

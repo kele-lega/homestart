@@ -1,0 +1,64 @@
+---
+import { diffDays } from '../lib/zoned-time';
+import ThemeSwitch from './ThemeSwitch.astro';
+
+interface Props {
+  readonly title: string;
+  /** 站点时区里的今天，'YYYY-MM-DD' */
+  readonly today: string;
+}
+
+// 顶栏属于页面外壳而不是 Widget：主题切换 + 报头右上角的期号，不参与 layout.yaml 的排布。
+// 头像（登录入口）、设置和公告在页头右边的三个圆里（widgets/toolbar）。站点名只给读屏和标签页用，版面上报头本身就是门面
+const { title, today } = Astro.props;
+const year = today.slice(0, 4);
+// 期号是今年的第几天：1 月 1 日为 Nº 1
+const issue = diffDays(`${year}-01-01`, today) + 1;
+const PETAL = 'M0 0C-5-4-6.5-11-3.2-15.5L0-13.4L3.2-15.5C6.5-11 5-4 0 0Z';
+---
+
+<header class="l-bar">
+  <h1 class="visually-hidden">{title}</h1>
+  <ThemeSwitch />
+  <p class="issue">
+    <svg class="mark" viewBox="-17 -17 34 34" width="13" height="13" aria-hidden="true">
+      <g class="petals">
+        {[0, 72, 144, 216, 288].map((angle) => <path d={PETAL} transform={`rotate(${angle})`} />)}
+      </g>
+      <circle class="heart" r="2.6" />
+    </svg>
+    Nº {issue} · {year} 活页
+  </p>
+</header>
+
+<style>
+  .l-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: 1.5rem;
+  }
+
+  .issue {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+    font: 0.75rem/1 var(--serif);
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  .mark {
+    flex: none;
+  }
+
+  .petals {
+    fill: var(--mark-petal);
+  }
+
+  .heart {
+    fill: var(--mark-heart);
+  }
+</style>

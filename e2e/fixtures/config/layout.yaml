@@ -1,0 +1,64 @@
+# E2E 专用布局：结构与 config/layout.yaml 相同；手机端顺序故意和 DOM 顺序不同
+widgets:
+  - { id: clock, type: clock, options: { seconds: false } }
+  - { id: search, type: search }
+  - { id: weather, type: weather, options: { label: 测试城, latitude: 22.54, longitude: 114.06 } }
+  - { id: toolbar, type: toolbar }
+  - { id: notes, type: placeholder, title: 便签, tone: blue, options: { lines: 3 } }
+  - { id: todo, type: placeholder, title: 待办, tone: purple, options: { lines: 2 } }
+  - { id: favorites, type: favorites, title: 常用网站, tone: neutral }
+  - { id: steam, type: steam, title: 游戏动态, tone: blue }
+  - { id: fund, type: placeholder, title: 基金走势, tone: green, options: { lines: 2 } }
+  # 圆环只给管理员；入口指向 example.com，外部请求都被 e2e 拦成固定页面
+  - id: server
+    type: server
+    options:
+      entries:
+        - { name: terminal, url: https://work.example.com, description: 网页终端 }
+        - { name: api, url: https://ccs.example.com }
+  # 日程三件套：e2e 用户没有订阅，日历的 month 操作在用例里注入日程；今天、Deadline 是服务端岛屿，被打桩
+  - { id: calendar, type: calendar }
+  - { id: agenda, type: agenda }
+  - { id: deadline, type: deadline }
+  - { id: categories, type: link-groups }
+
+zones:
+  - id: header
+    layout: areas
+    areas: ["clock search toolbar"]
+    columns: "minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr)"
+    narrowAreas: ["clock toolbar", "search search"]
+    narrowColumns: "minmax(0, 1fr) auto"
+    mobile: block
+    mobileAreas: ["clock toolbar", "search search"]
+    mobileColumns: "minmax(0, 1fr) auto"
+    align: center
+    items: [[clock, weather], search, toolbar]
+  # 页头下面单独一排
+  - id: nav
+    mobile: block
+    items: [categories]
+  # 默认 flatten：手机端拆开，里面的 Widget 各自参与排序
+  - id: side
+    items: [notes, todo, calendar, agenda, deadline]
+  - id: main
+    items: [favorites]
+  # 手机端折叠成一个开关
+  - id: extras
+    title: 扩展插件
+    layout: grid
+    columns: "repeat(auto-fit, minmax(16rem, 1fr))"
+    mobile: collapse
+    items: [steam, fund, server]
+
+page:
+  desktop:
+    columns: "minmax(17rem, 1fr) minmax(0, 2.2fr)"
+    rows: "auto auto auto 1fr"
+    areas:
+      - "header header"
+      - "nav nav"
+      - "side main"
+      - "side extras"
+  mobile:
+    order: [header, nav, favorites, todo, deadline, extras, notes, calendar, agenda]

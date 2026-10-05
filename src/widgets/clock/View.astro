@@ -1,0 +1,153 @@
+---
+import type { WidgetViewProps } from '../../core/widget';
+import { cnDayInfo } from '../../lib/cn-calendar';
+import { formatClock } from './format';
+import type { ClockOptions } from './widget';
+
+type Props = WidgetViewProps<ClockOptions>;
+
+const { options, site } = Astro.props;
+// 首屏直接渲染服务端时间，脚本加载后接管刷新，不会出现空白或跳动
+const now = new Date();
+const parts = formatClock(now, site.timezone, site.lang);
+const lunar = cnDayInfo(parts.year, parts.month, parts.day);
+// 时间右边两行：「2026.10.01 周四」「八月廿一 · 国庆」。每一段都能在设置页关掉，一行全关时那一行不显示
+const showDay = options.date || options.weekday;
+const lunarText = [
+  options.lunar && `${lunar.lunarMonth}${lunar.lunarDay}`,
+  options.festival && (lunar.festival ?? lunar.term),
+]
+  .filter(Boolean)
+  .join(' · ');
+---
+
+<div
+  class="clock"
+  data-clock
+  data-timezone={site.timezone}
+  data-lang={site.lang}
+  data-seconds={options.seconds ? '' : undefined}
+>
+  <time class="time" datetime={now.toISOString()}>
+    <span class="digits" data-part="hours">{parts.hours}</span>
+    <span class="colon">:</span>
+    <span class="digits" data-part="minutes">{parts.minutes}</span>
+    {
+      options.seconds && (
+        <span class="seconds">
+          <span class="colon">:</span>
+          <span class="digits" data-part="seconds">{parts.seconds}</span>
+        </span>
+      )
+    }
+  </time>
+  <!-- 标签之间带换行的空白在构建时会被删掉，空格要显式写出来 -->
+  {
+    showDay && (
+      <p class="line day">
+        {options.date && <span data-part="date">{parts.date}</span>}
+        {options.date && options.weekday && ' '}
+        {options.weekday && <span data-part="weekday">{parts.weekday}</span>}
+      </p>
+    )
+  }
+  {lunarText && <p class="line lunar">{lunarText}</p>}
+</div>
+
+<script>
+  import './clock';
+</script>
+
+<style>
+  /*
+   * 左边时间，右边一行一行往下排：公历、农历。时间跨满右边所有行，行数随设置变（0~3 行，
+   * 和时钟放进同一张卡片的天气算第三行，见下面），时间始终和这几行一起垂直居中
+   */
+  .clock {
+    display: grid;
+    grid-template-columns: auto minmax(0, auto);
+    grid-auto-rows: auto;
+    column-gap: 0.875rem;
+    align-content: center;
+    justify-content: start;
+  }
+
+  /* 数字等宽，每分钟跳字时整行不晃；字号压到和右边几行加起来差不多高，不再抢搜索框的戏 */
+  .time {
+    display: flex;
+    grid-row: 1 / span 3;
+    grid-column: 1;
+    align-self: center;
+    align-items: baseline;
+    font: 400 2.5rem/1 var(--serif);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  /*
+   * 时间用的 Georgia 没有等宽数字（tabular-nums 不起作用），1 比 0 窄：每跳一下整个时钟变宽变窄，
+   * 页头里旁边的搜索框跟着挪。每两位数字给一个固定宽度，跳字时什么都不动
+   */
+  .digits {
+    display: inline-block;
+    inline-size: 1.24em;
+    text-align: center;
+  }
+
+  /* 冒号淡一档、往上提一点，数字成了主体 */
+  .colon {
+    color: var(--ink-3);
+    translate: 0 -0.06em;
+  }
+
+  .seconds {
+    display: flex;
+    align-items: baseline;
+    font-size: 0.5em;
+    color: var(--ink-3);
+  }
+
+  .line {
+    grid-column: 2;
+    font: var(--text-sm) / 1.5 var(--label);
+    color: var(--ink-2);
+  }
+
+  .lunar {
+    color: var(--ink-3);
+  }
+
+  /*
+   * 时钟和别的 Widget 合成一张卡片时（layout.yaml 里 items 写 [clock, weather]），后面那个排在日期下面、时间右边，
+   * 像以前问候语的位置。时钟的外框和自身拆开（display: contents），时间和每一行直接排进卡片的网格。
+   * flatten 的区域在手机上会把卡片拆散，这种区域里不这样排，各自照常上下叠
+   */
+  :global(.l-zone:not([data-mobile='flatten']) .l-card:has(> .l-frame[data-widget='clock']:first-child)) {
+    display: grid;
+    grid-template-columns: auto minmax(0, auto);
+    grid-auto-rows: auto;
+    gap: 0 0.875rem;
+    align-content: center;
+    justify-content: start;
+  }
+
+  :global(.l-zone:not([data-mobile='flatten']) .l-card > .l-frame[data-widget='clock']:first-child),
+  :global(.l-zone:not([data-mobile='flatten']) .l-card > .l-frame[data-widget='clock']:first-child > .l-frame-body),
+  :global(.l-zone:not([data-mobile='flatten']) .l-card > .l-frame[data-widget='clock']:first-child) .clock {
+    display: contents;
+  }
+
+  :global(.l-zone:not([data-mobile='flatten']) .l-card > .l-frame[data-widget='clock']:first-child ~ .l-frame) {
+    grid-column: 2;
+  }
+
+  @media (width <= 48rem) {
+    .time {
+      font-size: 2.125rem;
+    }
+
+    .line {
+      font-size: var(--text-xs);
+    }
+  }
+</style>
