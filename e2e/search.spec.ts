@@ -79,6 +79,21 @@ test.describe('搜索', () => {
     await expect(await tab).toHaveURL('https://www.google.com/search?q=hello+world');
   });
 
+  test('点搜索引擎签直接搜输入的文字，即使高亮的是网站；没输入时只聚焦搜索框', async ({ page, context }) => {
+    await gotoHome(page);
+    const engine = page.getByRole('button', { name: '用 Google 搜索' });
+
+    await engine.click();
+    await expect(searchBox(page)).toBeFocused();
+
+    await searchBox(page).fill('git');
+    await expect(siteGroup(page).getByRole('option', { name: /^GitHub/ })).toHaveAttribute('aria-selected', 'true');
+    const tab = context.waitForEvent('page');
+    await engine.click();
+    await expect(await tab).toHaveURL('https://www.google.com/search?q=git');
+    await expect(searchBox(page)).toHaveValue('');
+  });
+
   test('不在输入时按 / 聚焦搜索框', { tag: '@desktop' }, async ({ page }) => {
     await gotoHome(page);
     await expect(searchBox(page)).not.toBeFocused();

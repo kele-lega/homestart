@@ -88,6 +88,33 @@ test.describe('分类导航（桌面）', { tag: '@desktop' }, () => {
     await expect(panel).toBeHidden();
   });
 
+  test('点开面板里的网站后收起', async ({ page, context }) => {
+    const dev = chip(page, '开发');
+    const panel = await panelOf(dev);
+
+    await dev.click();
+    await expect(panel).toBeVisible();
+    const tab = context.waitForEvent('page');
+    await panel.getByRole('link', { name: /^GitHub/ }).click();
+    await tab;
+    await expect(dev).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeHidden();
+  });
+
+  // 签子变窄时图标多的那几张不能把「N 个网站」挤成多行，否则同一排高矮不一
+  test('同一排签子等高，与网站数量无关', async ({ page }) => {
+    // 夹具里每组都是三个网站：拿掉一组图标摞里的一个，当作只有两个网站的分类
+    await group(page, 'fun').locator('.stack > *').last().evaluate((node) => node.remove());
+    // 夹具只有三组，签子很宽；把导航收窄到每张签子 160～200px（真实页面六组、窗口 1000～1300px 时的宽度）
+    for (const width of [640, 560, 520]) {
+      await nav(page).evaluate((node, value) => (node.style.inlineSize = `${value}px`), width);
+      const heights = await nav(page)
+        .locator('.chip')
+        .evaluateAll((chips) => chips.map((node) => node.getBoundingClientRect().height));
+      expect(new Set(heights).size, `导航宽 ${width}px：${heights.join(' / ')}`).toBe(1);
+    }
+  });
+
   test('面板向下弹出，不挡住上面页头里的搜索框', async ({ page }) => {
     const dev = chip(page, '开发');
     const panel = await panelOf(dev);

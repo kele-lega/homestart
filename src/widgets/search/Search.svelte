@@ -165,6 +165,13 @@
     activate(option ?? { kind: 'web', key: 'web', text });
   }
 
+  // 点搜索引擎签：不管高亮的是哪项，都用搜索引擎搜输入的内容；什么都没输入时把焦点交给输入框
+  function onEngineClick() {
+    const text = query.trim();
+    if (text === '') input?.focus();
+    else activate({ kind: 'web', key: 'web', text });
+  }
+
   function activate(option: SearchOption) {
     openInNewTab(targetOf(option, engine), option.kind === 'site');
     reset();
@@ -271,7 +278,15 @@
     {/if}
   </div>
   <div class="tail">
-    <span class="engine" aria-hidden="true">{ENGINES[engine].name}</span>
+    <!-- 点它直接用搜索引擎搜输入的内容；mousedown 阻止默认行为，焦点不离开输入框。
+         不做成提交按钮：表单里第一个提交按钮会被回车当成提交者，回车就该打开高亮项 -->
+    <button
+      class="engine"
+      type="button"
+      aria-label={`用 ${ENGINES[engine].name} 搜索`}
+      onmousedown={(event) => event.preventDefault()}
+      onclick={onEngineClick}>{ENGINES[engine].name}</button
+    >
     <kbd class="hotkey" aria-hidden="true">/</kbd>
   </div>
 
@@ -401,13 +416,31 @@
     gap: 0.75rem;
   }
 
-  /* 搜索引擎签：墨底斜体的名字，只是标明在用哪个；换引擎在设置页 */
+  /* 搜索引擎签：墨底斜体的名字，点它就用这个引擎搜；换引擎在设置页 */
   .engine {
     padding: 0.3125rem 0.5625rem;
     font: italic var(--text-sm) / 1 var(--serif);
     color: var(--paper);
     white-space: nowrap;
+    cursor: pointer;
     background: var(--ink);
+    border: 0;
+    border-radius: 0;
+    transition:
+      translate var(--dur-hover) var(--spring),
+      box-shadow var(--dur-hover) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .engine:active {
+    translate: 0 1px;
+  }
+
+  /* 悬停：底下一道樱花色笔线，和输入框聚焦时的那道一样；墨底白字不变，对比度不受影响 */
+  @media (hover: hover) {
+    .engine:hover {
+      box-shadow: 0 2px 0 var(--sakura-deep);
+    }
   }
 
   /* 快捷键提示只给有键盘的宽屏 */

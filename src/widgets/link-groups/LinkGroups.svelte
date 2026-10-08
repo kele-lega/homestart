@@ -1,7 +1,7 @@
 <!--
   分类导航：每个分类一个按钮，控制一块链接面板。
   宽屏：面板向下弹出，按卡片位置朝放得下的一侧展开。鼠标停留预览，点击或焦点进入面板时固定；
-  Esc、点击别处或 Tab 离开时收起。
+  点开里面的网站、Esc、点击别处或 Tab 离开时收起。
   窄屏：一行一张分类标签，点按在标签下方展开，各组互不影响。
   展开状态由 menu.ts 的纯函数计算，这里只把事件接进去。
 -->
@@ -129,6 +129,16 @@
     if (wide && isOpen(group) && next instanceof Node && !item.contains(next)) close();
   }
 
+  // 宽屏下点开面板里的网站后收起；焦点原本在链接上（键盘回车）时还给分类按钮，不落进收起的面板。
+  // 按着修饰键点（在后台连开几个）时保持展开
+  function onLinkClick(event: MouseEvent, group: LinkGroup) {
+    if (!wide || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const item = itemOf(group.id);
+    const hadFocus = item?.contains(document.activeElement) ?? false;
+    close();
+    if (hadFocus) item?.querySelector('button')?.focus({ preventScroll: true });
+  }
+
   function onWindowPointerDown(event: PointerEvent) {
     if (!wide || menu.open.length === 0) return;
     const target = event.target instanceof Element ? event.target : null;
@@ -191,7 +201,7 @@
             <ul class="links">
               {#each group.links as link}
                 <li>
-                  <a class="link petal-row" href={link.url} target="_blank" rel="noopener noreferrer" data-visit>
+                  <a class="link petal-row" href={link.url} target="_blank" rel="noopener noreferrer" data-visit onclick={(event) => onLinkClick(event, group)}>
                     <SiteIcon name={link.name} icon={link.icon} iconDark={link.iconDark} size="xs" />
                     <span class="label">{link.name}</span>
                   </a>
@@ -225,14 +235,19 @@
    * 分类签子：顶边一道 4px 的色调，左边打一个孔，像活页夹里的索引签。
    * 底色是色调混进纸色的淡色；展开时加深的那一层放在伪元素上，只过渡 opacity
    */
+  /*
+   * 文字一栏先按内容排开，图标摞只拿剩下的宽度；否则图标多的签子会把「3 个网站」挤成几行，
+   * 同一排的签子高矮不一。签子撑满所在的格子，同一排始终等高
+   */
   .chip {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     row-gap: 0.125rem;
     column-gap: 0.75rem;
     align-items: center;
     inline-size: 100%;
+    block-size: 100%;
     padding: 0.8125rem 0.875rem 0.75rem 2.25rem;
     text-align: start;
     background: color-mix(in srgb, var(--tone) 7%, var(--paper));
@@ -294,15 +309,23 @@
   }
 
   .count {
+    min-inline-size: 0;
+    overflow: hidden;
     font: var(--text-xs) / 1.3 var(--label);
     color: var(--ink-2);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
-  /* 前三个网站的图标并排放在右边，跨两行 */
+  /* 前三个网站的图标靠右并排，跨两行；放不下的图标折到第二行被裁掉，不会挤文字 */
   .stack {
     display: flex;
+    flex-wrap: wrap;
     grid-area: 1 / 2 / 3 / 3;
+    justify-content: flex-end;
     gap: 0.25rem;
+    block-size: 1.375rem;
+    overflow: hidden;
   }
 
   .chip:focus-visible,
