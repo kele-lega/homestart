@@ -158,11 +158,6 @@ async function main() {
   const config = parse(original);
   const icons = [...externalIcons(original)];
 
-  if (icons.length === 0) {
-    console.log('links.yaml 里没有外链图标，什么都不用做。');
-    return;
-  }
-
   // 省略 icon 的链接：运行时按 faviconService 推导出地址，这里一并下载。
   // 记下文档顺序，插入时按顺序找，避免多条同网址时错位。
   const ordered = [];
@@ -177,6 +172,11 @@ async function main() {
     } catch {
       // 网址不合法时交给应用自己的配置校验报错，这里跳过
     }
+  }
+
+  if (icons.length === 0) {
+    console.log('links.yaml 里没有外链图标，什么都不用做。');
+    return;
   }
 
   mkdirSync(OUT_DIR, { recursive: true });
