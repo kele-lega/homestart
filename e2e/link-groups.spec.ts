@@ -161,6 +161,53 @@ test.describe('分类导航（桌面）', { tag: '@desktop' }, () => {
 });
 
 test.describe('分类导航（手机）', { tag: '@mobile' }, () => {
+  for (const width of [375, 390, 430, 768]) {
+    test(`展开后签子不撑高，网站列表不覆盖下一分类（${width}px）`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await gotoHome(page);
+      const dev = chip(page, '开发');
+      const panel = await panelOf(dev);
+      const height = (await dev.boundingBox())!.height;
+
+      await dev.tap();
+      await expect(dev).toHaveAttribute('aria-expanded', 'true');
+      // 等正常展开动画落到位；仅断言可见不能发现列表越界、被下一分类盖住的问题
+      await expect(panel.locator('.fold')).toHaveCSS('opacity', '1');
+      await expect.poll(async () => (await dev.boundingBox())!.height).toBeCloseTo(height, 0);
+      const [chipBox, panelBox, groupBox, nextBox] = await Promise.all([
+        dev.boundingBox(),
+        panel.boundingBox(),
+        group(page, 'dev').boundingBox(),
+        group(page, 'work').boundingBox(),
+      ]);
+      expect(panelBox!.y).toBeGreaterThanOrEqual(chipBox!.y + chipBox!.height);
+      expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(groupBox!.y + groupBox!.height + 1);
+      expect(nextBox!.y).toBeGreaterThan(panelBox!.y + panelBox!.height);
+
+      await chip(page, '办公').tap();
+      await expect(chip(page, '办公')).toHaveAttribute('aria-expanded', 'true');
+      await expect(dev).toHaveAttribute('aria-expanded', 'true');
+      await dev.tap();
+      await expect(panel).toBeHidden();
+      await expect.poll(async () => (await dev.boundingBox())!.height).toBeCloseTo(height, 0);
+    });
+  }
+
+  test('展开后能点开网站，返回时分类保持展开', async ({ page, context }) => {
+    await gotoHome(page);
+    const dev = chip(page, '开发');
+    const panel = await panelOf(dev);
+    await dev.tap();
+    const tab = context.waitForEvent('page');
+    await panel.getByRole('link', { name: /^GitHub/ }).tap();
+    const opened = await tab;
+    await expect(opened).toHaveURL('https://github.com/');
+    await opened.close();
+    await expect(dev).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
+  });
+
   test('点按展开、再点收起，各组互不影响', async ({ page }) => {
     await gotoHome(page);
     const dev = chip(page, '开发');

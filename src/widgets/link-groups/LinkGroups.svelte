@@ -237,7 +237,7 @@
    */
   /*
    * 文字一栏先按内容排开，图标摞只拿剩下的宽度；否则图标多的签子会把「3 个网站」挤成几行，
-   * 同一排的签子高矮不一。签子撑满所在的格子，同一排始终等高
+   * 同一排的签子高矮不一。宽屏下签子再撑满所在的格子，同一排始终等高（见宽屏媒体查询）
    */
   .chip {
     position: relative;
@@ -247,7 +247,6 @@
     column-gap: 0.75rem;
     align-items: center;
     inline-size: 100%;
-    block-size: 100%;
     padding: 0.8125rem 0.875rem 0.75rem 2.25rem;
     text-align: start;
     background: color-mix(in srgb, var(--tone) 7%, var(--paper));
@@ -398,6 +397,11 @@
     .groups {
       grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
       gap: 1.25rem;
+    }
+
+    /* 签子撑满所在格子，同一排始终等高。窄屏不能这么写：面板在正常流里，百分比高度会把面板也吃进来 */
+    .chip {
+      block-size: 100%;
     }
 
     /*
