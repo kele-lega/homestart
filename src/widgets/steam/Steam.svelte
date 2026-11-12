@@ -52,7 +52,7 @@
     void load();
   }
 
-  // 竖版封面取不到时换横版头图；再取不到（CDN 挡了）就藏起 img，露出骨架色的底
+  // 固定路径取不到时查询官方资源地址（新游戏路径含哈希）；再取不到就露出骨架色的底
   function onCoverError(event: Event, fallback: string): void {
     const img = event.currentTarget as HTMLImageElement;
     if (img.dataset.fallback === undefined) {

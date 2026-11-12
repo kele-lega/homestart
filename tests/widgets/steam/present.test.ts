@@ -22,8 +22,9 @@ describe('coverUrl', () => {
     expect(coverUrl(570)).toBe('https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/library_600x900.jpg');
   });
 
-  it('falls back to the landscape header', () => {
-    expect(coverFallbackUrl(570)).toBe('https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/header.jpg');
+  it('resolves official assets when the fixed CDN path is missing', () => {
+    expect(coverFallbackUrl(570)).toBe('/steam-covers/570');
+    expect(coverFallbackUrl(4115450)).toBe('/steam-covers/4115450');
   });
 });
 

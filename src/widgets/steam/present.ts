@@ -8,7 +8,7 @@ export interface GameRow {
   readonly name: string;
   /** 竖版库封面（600×900） */
   readonly cover: string;
-  /** 老游戏可能没有竖版封面，退回横版头图 */
+  /** 固定路径失效时，由服务端查询官方资源地址 */
   readonly coverFallback: string;
   /** 「今天 · 2.3 小时」「近两周 2.3 小时」 */
   readonly meta: string;
@@ -26,7 +26,7 @@ export function coverUrl(appId: number): string {
 }
 
 export function coverFallbackUrl(appId: number): string {
-  return `${ASSETS}/${appId}/header.jpg`;
+  return `/steam-covers/${appId}`;
 }
 
 /** 100 小时以下留一位小数，往上取整（与原型一致） */

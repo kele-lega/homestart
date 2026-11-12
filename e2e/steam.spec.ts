@@ -81,6 +81,43 @@ test.describe('Steam', () => {
     expect(long!.x + long!.width).toBeLessThanOrEqual(card!.x + card!.width + 1);
   });
 
+  test('固定封面 404 时加载官方哈希路径的竖版图，失败后不循环请求', async ({ page }) => {
+    const cover = 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4115450/library_600x900.jpg';
+    let failResolved = false;
+    let lookups = 0;
+    await stubRecent(page, {
+      sub: '最近游玩',
+      feed: {
+        status: 'ok', stale: false,
+        rows: [{ appId: 4115450, name: '影之刃零', cover, coverFallback: '/steam-covers/4115450', meta: '今天 · 2.3 小时', detail: '累计 2.3 小时' }],
+      },
+    });
+    await page.route(cover, (route) => route.fulfill({ status: 404, body: '' }));
+    await page.route('**/steam-covers/4115450', (route) => {
+      lookups += 1;
+      return failResolved
+        ? route.fulfill({ status: 404, body: '' })
+        : route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900"><rect width="600" height="900" fill="red"/></svg>' });
+    });
+
+    await gotoSteam(page);
+    const image = steam(page).locator('.g-cover img');
+    await image.scrollIntoViewIfNeeded();
+    await expect(image).toHaveAttribute('src', '/steam-covers/4115450');
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(600);
+    await expect(image).toBeVisible();
+    expect(lookups).toBe(1);
+
+    failResolved = true;
+    await page.reload();
+    const toggle = page.getByRole('button', { name: '扩展插件' });
+    if (await toggle.count() && await toggle.getAttribute('aria-expanded') === 'false') await toggle.tap();
+    await steam(page).getByText('影之刃零').scrollIntoViewIfNeeded();
+    await expect(image).toBeHidden();
+    expect(lookups).toBe(2);
+    await expect(steam(page).getByText('影之刃零')).toBeVisible();
+  });
+
   test('最近两周没有玩游戏时显示空状态', async ({ page }) => {
     await stubRecent(page, {
       account: { steamId: '76561197960265729', name: undefined },
