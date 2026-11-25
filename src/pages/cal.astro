@@ -1,0 +1,9 @@
+---
+import InkPage from '../ink/InkPage.astro';
+import { loadPage } from '../ink/load';
+
+// 留白的五个地址（/、/cal、/dir、/play、/site）渲染的是同一份文档，只是先显示的页面不同；站内切换不重新加载
+const page = await loadPage(Astro);
+---
+
+<InkPage route="cal" page={page} />

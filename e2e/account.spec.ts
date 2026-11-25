@@ -15,7 +15,7 @@ test.describe('登录', () => {
     await avatar.click();
     await expect(page).toHaveURL('/login');
     await expect(page.getByRole('heading', { name: '登录', level: 1 })).toBeVisible();
-    await page.getByRole('link', { name: '回主页' }).click();
+    await page.getByRole('link', { name: '首页', exact: true }).click();
     await expect(page).toHaveURL('/');
   });
 
@@ -39,6 +39,7 @@ test.describe('登录', () => {
     await page.context().clearCookies();
 
     await signIn(page, username, PASSWORD);
+    await gotoHome(page);
     const avatar = page.getByRole('link', { name: `个人中心（${username}）` });
     await expect(avatar).toHaveAttribute('href', '/account');
     // 新账号没传过头像，显示默认色块图

@@ -1,0 +1,184 @@
+/*
+ * 留白里首页以外的几页（登录、注册、找回密码、个人中心、设置）。
+ * 页面骨架是 layouts/LeafLayout.astro；卡片、输入框、按钮沿用 styles/leaf.css 的结构，这里只把它们改成宣纸上的样子：
+ * 卡片不再是浮起来的一张，只剩标题下一道细线；标题是毛笔字；主按钮是一方朱砂印
+ */
+
+.leaf {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  padding: 1.3rem var(--pad) clamp(4rem, 12vh, 8rem);
+  isolation: isolate;
+}
+
+/* 纸的下沿一抹远山的淡墨，和首页、子页呼应 */
+.leaf::after {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: -1;
+  block-size: 22vh;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(transparent, var(--hill-1));
+}
+
+.leaf-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 2.2rem;
+}
+
+.leaf-back {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  /* 可点区域比字大一圈，字还在原处 */
+  margin: -0.8rem -0.9rem;
+  padding: 0.8rem 0.9rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: var(--ink-3);
+  transition: color 0.2s;
+}
+
+.leaf-back b {
+  font-family: var(--brush);
+  font-size: 1.7rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.leaf-back:is(:hover, :focus-visible) {
+  color: var(--cinnabar);
+}
+
+.leaf-tools {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.leaf-masthead {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+  margin-block: clamp(2rem, 8vh, 5rem) clamp(2.4rem, 6vh, 4rem);
+  text-align: center;
+}
+
+.leaf-title {
+  /* 字距加在每个字后面：往右补回最后一个字的，整体才居中 */
+  margin-inline-end: -0.3em;
+  font-family: var(--brush);
+  font-size: clamp(2.2rem, 3.2vw, 3.4rem);
+  line-height: 1.1;
+  letter-spacing: 0.3em;
+}
+
+.leaf-date {
+  margin-inline-end: -0.3em;
+  font-size: 0.78rem;
+  letter-spacing: 0.3em;
+  color: var(--ink-3);
+}
+
+.leaf-body {
+  display: grid;
+  gap: clamp(2.6rem, 6vh, 4rem);
+  inline-size: min(22rem, 100%);
+  margin-inline: auto;
+}
+
+.leaf[data-width='wide'] .leaf-body {
+  inline-size: min(48rem, 100%);
+}
+
+/* 卡片：不画边框和投影，标题下一道细线就够了 */
+html[data-skin='ink'] .leaf-card {
+  gap: 1.1rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+html[data-skin='ink'] .leaf-card-head {
+  padding-block-end: 0.6rem;
+  border-block-end: 1px solid var(--rule);
+}
+
+html[data-skin='ink'] .leaf-card-title {
+  font-family: var(--brush);
+  font-size: 1.75rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+}
+
+html[data-skin='ink'] .leaf-card-hint,
+html[data-skin='ink'] .leaf-field-label {
+  letter-spacing: 0.2em;
+}
+
+html[data-skin='ink'] .leaf-input {
+  font-family: var(--song);
+  font-size: 1.05rem;
+  border-block-end-color: var(--ink-4);
+}
+
+html[data-skin='ink'] .leaf-field::after {
+  block-size: 1.5px;
+  background: var(--cinnabar);
+}
+
+/* 按钮：次按钮是一道淡墨的细框；主按钮是朱砂印，带毛边 */
+html[data-skin='ink'] .leaf-btn {
+  letter-spacing: 0.3em;
+  border-color: var(--ink-4);
+  border-radius: 2px;
+}
+
+html[data-skin='ink'] .leaf-btn:is([data-kind='primary'], [data-kind='wide']) {
+  color: var(--cinnabar-ink);
+  background: var(--cinnabar);
+  border-color: transparent;
+  -webkit-mask: var(--stamp) center / 100% 100% no-repeat;
+  mask: var(--stamp) center / 100% 100% no-repeat;
+  transition:
+    translate 0.15s,
+    filter 0.2s;
+}
+
+/* 拉长的印会把毛边也拉花：整行宽的按钮不带毛边 */
+html[data-skin='ink'] .leaf-btn[data-kind='wide'] {
+  -webkit-mask: none;
+  mask: none;
+  font-family: var(--brush);
+  font-size: 1.2rem;
+  letter-spacing: 0.5em;
+}
+
+@media (hover: hover) {
+  html[data-skin='ink'] .leaf-btn:is([data-kind='primary'], [data-kind='wide']):not(:disabled):hover {
+    filter: brightness(1.08);
+  }
+
+  html[data-skin='ink'] .leaf-btn:not([data-kind]):not(:disabled):hover {
+    background: var(--wash);
+    border-color: var(--ink-3);
+  }
+}
+
+html[data-skin='ink'] .leaf-badge {
+  border-radius: 2px;
+}
+
+@media (width <= 48rem) {
+  .leaf {
+    padding-inline: 1.1rem;
+  }
+}

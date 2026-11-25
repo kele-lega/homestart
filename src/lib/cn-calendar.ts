@@ -83,3 +83,12 @@ export function cnDayInfo(year: number, month: number, day: number): CnDayInfo {
 
   return { lunarMonth, lunarDay, term, festival, holiday, label, labelKind, marked: festival !== undefined || term !== undefined };
 }
+
+/**
+ * 当前所在的节气和它已经过了几天（节气当天为 0），例如「立冬」后第 3 天。
+ * 和 cnDayInfo 一样只在服务端用
+ */
+export function currentTerm(year: number, month: number, day: number): { readonly name: string; readonly days: number } {
+  const termDay = SolarDay.fromYmd(year, month, day).getTermDay();
+  return { name: termDay.getName(), days: termDay.getDayIndex() };
+}

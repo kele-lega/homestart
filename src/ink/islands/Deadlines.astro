@@ -1,0 +1,85 @@
+---
+import { loadConfigFor } from '../../adapters/preferences';
+import { userFrom } from '../../core/api';
+import { loadWidgetData } from '../../core/widget-data';
+import { feedNotice } from '../../lib/feed-view';
+import deadline from '../../widgets/deadline/widget';
+import { cnNumber } from '../text';
+
+/**
+ * server island：日历订阅里接下来要截止的事项。两种画法——
+ * strips：首页左边垂下来的条幅，越近越短，十五天以内是朱砂色；点一下去月令、选中到期那天
+ * list：月令右下角「期限」一栏
+ */
+interface Props {
+  id: string;
+  variant: 'strips' | 'list';
+}
+
+const { id, variant } = Astro.props;
+const user = userFrom(Astro.request.headers, Astro.locals.auth);
+const result = await loadWidgetData(deadline, id, {
+  loadConfig: () => loadConfigFor(user),
+  user,
+  signal: Astro.request.signal,
+  logError: (message) => Astro.logger.error(message),
+});
+const rows = result.ok && result.data.status === 'ok' ? result.data.data : [];
+const notice = result.ok ? feedNotice(result.data) : ({ kind: 'error', text: '期限暂时不可用' } as const);
+const HOT_DAYS = 15;
+/** 条幅的长度：剩的天数越多越长，有个上下限 */
+const lengthOf = (days: number) => Math.min(22, 10 + days * 0.42).toFixed(1);
+const daysText = (days: number) => (days === 0 ? '今' : String(days));
+---
+
+{
+  variant === 'strips' ? (
+    rows.map((row) => (
+      <a
+        class="strip"
+        href={`/cal?date=${row.date}`}
+        data-go="cal"
+        data-hot={row.daysLeft <= HOT_DAYS ? '' : undefined}
+        style={{ '--len': lengthOf(row.daysLeft) }}
+        title={`${row.title} · ${row.dateText}`}
+      >
+        <span class="t">{row.title}</span>
+        <span class="d">
+          <span class="n">{daysText(row.daysLeft)}</span>
+          {row.daysLeft > 0 && '日'}
+          <span class="visually-hidden">{row.daysLeft === 0 ? '天截止' : '后截止'}</span>
+        </span>
+        <span class="note" aria-hidden="true">
+          {row.dateText}
+          {row.note && ` · ${row.note}`}
+        </span>
+      </a>
+    ))
+  ) : (
+    <>
+      {notice && (
+        <p class="feed-notice" data-kind={notice.kind}>
+          {notice.text}
+        </p>
+      )}
+      {rows.map((row) => (
+        <a class="soon-row" href={`/cal?date=${row.date}`} data-go="cal" data-hot={row.daysLeft <= HOT_DAYS ? '' : undefined}>
+          <b>{row.daysLeft === 0 ? '今' : row.daysLeft}</b>
+          <span class="soon-when">{row.daysLeft === 0 ? '今天截止' : `${cnNumber(row.daysLeft)}日后`}</span>
+          <span class="soon-title">{row.title}</span>
+          <small>{row.dateText}</small>
+        </a>
+      ))}
+      {result.ok && result.data.status === 'ok' && rows.length === 0 && <p class="none">接下来没有要截止的事项。</p>}
+      {result.ok && result.data.status === 'unconfigured' && (
+        <p class="none">
+          还没有日历订阅，
+          <a class="inline" href="/settings">
+            去设置里填一个
+          </a>
+          。
+        </p>
+      )}
+    </>
+  )
+}

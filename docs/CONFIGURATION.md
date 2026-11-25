@@ -66,6 +66,8 @@ faviconService: https://a.favicon.im/{host}?larger=true
 
 ## layout.yaml — 页面布局
 
+> 留白首页（`/`）只用这里的 `widgets`：每种模块取第一个实例，用它的 `id` 和 `options`；`zones`、`page` 只影响旧版首页 `/classic`。删掉某个模块，留白里对应的那一块也就没有了。常用网站在留白里固定显示 8 个（按 `1`–`8` 打开），不看 `favorites` 的 `count`。
+
 三层结构：**Widget 实例** → **区域（zone）** → **页面网格**。
 
 ### widgets：模块实例
@@ -84,7 +86,7 @@ widgets:
 | 模块 type | 说明 | options |
 |---|---|---|
 | `clock` | 时间 + 旁边两行日期 | `seconds`（显示秒，默认 false）；时间右边第一行的 `date`（2026.10.01）、`weekday`（周四），第二行的 `lunar`（农历）、`festival`（节日节气），默认都是 true，一行全关时那一行不显示。都可个人设置。和别的模块合成一张卡片（`items` 里写 `[clock, weather]`）时，后面那个排在日期下面、时间右边 |
-| `search` | 搜索框 | `engines`（可选的搜索引擎，第一个为默认；用户只能在这几个里挑）、`suggest`（联想来源：`bing` / `false` 关闭）、`sites`（是否搜索 links.yaml，默认 true）、`placeholder`。引擎、联想开关、搜网站可个人设置 |
+| `search` | 搜索框 | `engines`（可选的搜索引擎：`google` / `bing` / `yandex` / `baidu`，第一个为默认；用户只能在这几个里挑。以前的 `duckduckgo`、`brave` 已撤掉，写着也会被跳过）、`suggest`（联想来源：`bing` / `false` 关闭）、`sites`（是否搜索 links.yaml，默认 true）、`placeholder`。引擎、联想开关、搜网站可个人设置 |
 | `weather` | 天气（一行：地名、天气、气温、最高 / 最低） | `label`（地名，可选）、`latitude`、`longitude`（必填，[-90,90] / [-180,180]）。地区可个人设置（按地名搜索，同时查 OpenStreetMap Nominatim 和 Open-Meteo） |
 | `toolbar` | 页头右边三个圆：头像、设置、公告 | 无。头像按站内登录显示，悬停展开账号面板（上次登录、登录设备数，链到个人中心各块，退出登录）；公告点开是弹窗，所有人都能看，**admin** 在弹窗里发布、删除，存在 `ANNOUNCEMENTS_FILE`（默认 `data/announcements.json`），最多留 50 条 |
 | `calendar` | 月历 + ICS 订阅 | 无（每个登录用户在设置页填自己的订阅地址） |

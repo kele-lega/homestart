@@ -1,0 +1,47 @@
+---
+import { neighbor, PAGES, pathOf, SUB_PAGES, type InkRoute, type SubPage } from '../pages';
+
+/**
+ * 子页的外框：左上「归 首页」，右边竖排的页眉（大字、印章、一行小字），底下前后翻页和四个小圆点。
+ * 四个子页都在同一份文档里，不是当前地址的那几页带 hidden；链接都是真地址，脚本没加载时照样整页跳转
+ */
+interface Props {
+  readonly page: SubPage;
+  readonly route: InkRoute;
+}
+
+const { page, route } = Astro.props;
+const meta = PAGES[page];
+const prev = neighbor(page, -1);
+const next = neighbor(page, 1);
+---
+
+<section class="page sub" data-page={page} hidden={route !== page} aria-labelledby={`ink-h-${page}`}>
+  <a class="back" href="/" data-go="home"><b>归</b>首页</a>
+  <div class="sub-body">
+    <slot />
+  </div>
+  <header class="ph">
+    <h1 id={`ink-h-${page}`}>{meta.name}</h1>
+    <span class="seal" data-seal={page} aria-hidden="true">{meta.seal}</span>
+    <small>{meta.sub}</small>
+  </header>
+  <nav class="sib" aria-label="翻页">
+    <a href={pathOf(prev)} data-go={prev} rel="prev"><span aria-hidden="true">‹</span> <b>{PAGES[prev].name}</b></a>
+    <span class="pos">
+      {
+        SUB_PAGES.map((other) => (
+          <a
+            href={pathOf(other)}
+            data-go={other}
+            class:list={{ on: other === page }}
+            aria-current={other === page ? 'page' : undefined}
+            aria-label={PAGES[other].name}
+            title={PAGES[other].name}
+          />
+        ))
+      }
+    </span>
+    <a href={pathOf(next)} data-go={next} rel="next"><b>{PAGES[next].name}</b> <span aria-hidden="true">›</span></a>
+  </nav>
+</section>

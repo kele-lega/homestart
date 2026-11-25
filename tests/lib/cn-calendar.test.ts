@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cnDayInfo, FESTIVAL_NAMES } from '../../src/lib/cn-calendar';
+import { cnDayInfo, currentTerm, FESTIVAL_NAMES } from '../../src/lib/cn-calendar';
 
 describe('cnDayInfo', () => {
   it('shows a solar term only on the day it begins', () => {
@@ -89,5 +89,14 @@ describe('FESTIVAL_NAMES', () => {
       expect([...display].length, raw).toBeLessThanOrEqual(3);
       expect(display, raw).not.toBe(raw);
     }
+  });
+});
+
+describe('currentTerm', () => {
+  it('names the solar term a day falls in and how many days into it', () => {
+    // 2026 年立冬在 11 月 7 日，小雪在 11 月 22 日
+    expect(currentTerm(2026, 11, 22)).toEqual({ name: '小雪', days: 0 });
+    expect(currentTerm(2026, 11, 25)).toEqual({ name: '小雪', days: 3 });
+    expect(currentTerm(2026, 11, 10).name).toBe('立冬');
   });
 });

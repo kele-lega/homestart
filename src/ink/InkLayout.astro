@@ -1,0 +1,58 @@
+---
+import type { SiteConfig } from '../core/site';
+import { SIGNED_IN_FLAG } from '../lib/page-turn';
+import { THEMES, THEME_STORAGE_KEY } from '../lib/theme';
+import '../styles/tokens.css';
+import '../styles/tones.css';
+import '../styles/base.css';
+import './tokens.css';
+
+/**
+ * 留白的外壳：首页那五个地址，和登录、注册、找回密码、个人中心、设置这几页都用它。
+ * 设计变量沿用 styles/tokens.css 的名字，./tokens.css 把颜色、字体换成宣纸和墨（<html data-skin="ink">），
+ * 共用的组件（弹窗、表单、卡片）不用改就是留白的样子。旧版首页（/classic）仍是 BaseLayout
+ */
+interface Props {
+  readonly site: Pick<SiteConfig, 'title' | 'lang' | 'favicon'> & Partial<SiteConfig>;
+  /** 标签页标题 */
+  readonly title: string;
+  /** 首页那份文档先显示哪一页；别的页面不传 */
+  readonly route?: string | undefined;
+}
+
+const { site, title, route } = Astro.props;
+---
+
+<!doctype html>
+<html lang={site.lang} data-theme="system" data-skin="ink" data-route={route}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- 私有门户：点出去的链接、搜索和远程图标都不带本站地址。同源请求照常带上（no-referrer 会让同源 POST 的 Origin 变成 null） -->
+    <meta name="referrer" content="same-origin" />
+    <title>{title}</title>
+    {site.description && <meta name="description" content={site.description} />}
+    <link rel="icon" href={site.favicon} />
+    <!--
+      字体放在本站（public/fonts），而且不挡首屏：先用本机字体画出来，字体文件到了再换上。
+      每个 @font-face 先写 local()：系统里装了同名字体就直接用；没装才按 unicode-range 分片，只下载页面上真用到的几片
+    -->
+    <link rel="stylesheet" href="/fonts/fonts.css" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="/fonts/fonts.css" /></noscript>
+    <!-- 绘制前应用保存的主题，避免先闪一下浅色 -->
+    <script is:inline define:vars={{ themes: THEMES, storageKey: THEME_STORAGE_KEY, signedInFlag: SIGNED_IN_FLAG }}>
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (themes.includes(saved)) document.documentElement.dataset.theme = saved;
+        // 登录页留下的「刚登录」标记：留白不用它，清掉免得留在会话里
+        sessionStorage.removeItem(signedInFlag);
+      } catch {
+        // 存储不可用时保持跟随系统
+      }
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

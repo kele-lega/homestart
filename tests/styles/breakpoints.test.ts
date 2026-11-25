@@ -20,7 +20,9 @@ describe('viewport breakpoints', () => {
   });
 
   it('only uses the narrow-window breakpoint for the zone grid', () => {
-    const narrow = sources.filter(({ text }) => text.includes(NARROW_MAX)).map(({ file }) => file.replaceAll('\\', '/'));
+    // 整个数值才算：0.78rem 这样的字号不是断点
+    const token = new RegExp(`(?<![\\d.])${NARROW_MAX.replace('.', '\\.')}`);
+    const narrow = sources.filter(({ text }) => token.test(text)).map(({ file }) => file.replaceAll('\\', '/'));
     expect(narrow).toEqual(['zones/zones.css']);
   });
 });

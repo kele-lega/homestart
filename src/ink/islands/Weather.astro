@@ -1,0 +1,41 @@
+---
+import { loadConfigFor } from '../../adapters/preferences';
+import { userFrom } from '../../core/api';
+import { loadWidgetData } from '../../core/widget-data';
+import { present } from '../../widgets/weather/present';
+import weather from '../../widgets/weather/widget';
+
+// server island：题款里「北京」后面那半行。页面先显示占位，天气取回来后替换
+interface Props {
+  id: string;
+}
+
+const user = userFrom(Astro.request.headers, Astro.locals.auth);
+const result = await loadWidgetData(weather, Astro.props.id, {
+  loadConfig: () => loadConfigFor(user),
+  user,
+  signal: Astro.request.signal,
+  logError: (message) => Astro.logger.error(message),
+});
+const view = result.ok ? present(result.data) : undefined;
+---
+
+{
+  view ? (
+    <span class="wx">
+      {view.condition}　{view.temperature}
+      {view.range && (
+        <span class="wx-range">
+          <span aria-hidden="true">
+            {view.range.high} / {view.range.low}
+          </span>
+          <span class="visually-hidden">
+            最高 {view.range.high}，最低 {view.range.low}
+          </span>
+        </span>
+      )}
+    </span>
+  ) : (
+    <span class="wx wx-off">天气暂时不可用</span>
+  )
+}

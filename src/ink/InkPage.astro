@@ -1,0 +1,420 @@
+---
+import { recentVisits } from '../adapters/link-visits';
+import { siteCounts } from '../adapters/site-stats';
+import { listSuggestions } from '../adapters/suggestions';
+import { ANONYMOUS, userFrom } from '../core/api';
+import { logBackgroundError } from '../core/log';
+import { cnDayInfo, currentTerm } from '../lib/cn-calendar';
+import { ZERO_COUNTS } from '../lib/site-stats';
+import { pendingCount } from '../lib/suggestions';
+import { localDateKey } from '../lib/zoned-time';
+import { monthGrid } from '../widgets/calendar/month';
+import { monthOfDate } from '../widgets/calendar/month-key';
+import { formatClock } from '../widgets/clock/format';
+import { pickFavorites } from '../widgets/favorites/pick';
+import { groupLinks } from '../widgets/link-groups/groups';
+import { toSiteEntry } from '../widgets/search/sites';
+import { hostOf } from '../lib/url';
+import ConfigErrorView from '../zones/ConfigErrorView.astro';
+import InkLayout from './InkLayout.astro';
+import { inkInstances } from './instances';
+import type { PageConfig } from './load';
+import { PAGES, SUB_PAGES, titleOf, type InkRoute } from './pages';
+import { cnMonth, cnNumber, greeting, shichen } from './text';
+import Deadlines from './islands/Deadlines.astro';
+import Weather from './islands/Weather.astro';
+import Icon from './parts/Icon.astro';
+import SubFrame from './parts/SubFrame.astro';
+import Tools from './parts/Tools.astro';
+import InkAdmin from './components/InkAdmin.svelte';
+import InkCalendar from './components/InkCalendar.svelte';
+import InkSearch from './components/InkSearch.svelte';
+import InkSite from './components/InkSite.svelte';
+import InkSteam from './components/InkSteam.svelte';
+import './ink.css';
+
+/**
+ * 留白：首页和四个子页（月令、目录、游艺、跋）。/、/cal、/dir、/play、/site 五个地址都渲染这同一份文档，
+ * 只是一开始显示哪一页不同；站内切换由 ./router.ts 用 pushState 和 View Transitions 完成。
+ *
+ * 数据和线上旧版完全一样：layout.yaml 里各类 Widget 的实例（id 用来调操作、跑 server island，options 已合并个人偏好）、
+ * links.yaml 的网站、登录用户的点击记录。管理员的东西（管理工具、服务器、待处理建议数、账号管理）只在管理员的页面里渲染，
+ * 别人的页面里没有这些标记、地址，也不会下载对应的脚本
+ */
+interface Props {
+  readonly route: InkRoute;
+  readonly page: PageConfig;
+}
+
+const { route, page } = Astro.props;
+const FALLBACK_SITE = { title: '配置有误', lang: 'zh-CN', favicon: '/favicon.ico' } as const;
+
+const config = page.config;
+const auth = Astro.locals.auth;
+const admin = auth?.role === 'admin';
+const user = userFrom(Astro.request.headers, auth);
+const signedIn = user !== ANONYMOUS;
+
+const site = config?.site;
+const instances = config ? inkInstances(config) : {};
+const timeZone = site?.timezone ?? 'Asia/Shanghai';
+
+// 题款：服务端先按站点时区画好，脚本只刷新时、分和时辰
+const nowMs = Date.now();
+const today = localDateKey(nowMs, timeZone);
+const clock = formatClock(new Date(nowMs), timeZone, site?.lang ?? 'zh-CN');
+const hour = Number(clock.hours);
+const lunar = cnDayInfo(clock.year, clock.month, clock.day);
+const term = currentTerm(clock.year, clock.month, clock.day);
+const clockOptions = instances.clock?.options;
+const showLunar = clockOptions?.lunar ?? true;
+const season = (clockOptions?.festival ?? true) ? (lunar.festival ?? (term.days === 0 ? term.name : `${term.name}后`)) : undefined;
+const weekday = clock.weekday.replace('周', '星期');
+
+// 最近访问：登录用户按点击记录排（和旧版「常用网站」同一份数据），没记录时按配置里标了 favorite 的
+const links = config?.links.links ?? [];
+const recent = signedIn
+  ? await recentVisits(user).catch((error: unknown) => {
+      logBackgroundError('link-visits', `${user} 的点击记录读取失败，最近访问按配置顺序显示`, error);
+      return [] as string[];
+    })
+  : [];
+const FAVORITES = 8;
+const favorites = config ? pickFavorites(links, recent, FAVORITES) : [];
+const TILT = [-2.2, 1.6, -1, 2.4, -1.6, 1, -2.6, 1.8];
+
+const groups = config ? groupLinks(config.links) : [];
+const search = instances.search;
+const DEFAULT_PLACEHOLDER = '搜索网站，或用 {engine} 搜索…';
+const sites = search?.options.sites ? links.map(toSiteEntry) : [];
+
+// 跋：计数所有人都看得到；待处理的建议只给管理员数
+const counts = await siteCounts().catch((error: unknown) => {
+  logBackgroundError('site-stats', '访问计数读取失败，先显示 0', error);
+  return ZERO_COUNTS;
+});
+const pending = admin
+  ? await listSuggestions()
+      .then(pendingCount)
+      .catch((error: unknown) => {
+        logBackgroundError('suggestions', '建议读取失败，先不显示条数', error);
+        return 0;
+      })
+  : 0;
+
+const calendar = instances.calendar;
+const initialMonth = monthGrid(monthOfDate(today), today);
+
+const count = (n: number) => (n < 100 ? cnNumber(n) : String(n));
+const HINTS = {
+  cal: '日程与期限',
+  dir: `${count(links.length)}个网站`,
+  play: '最近两周',
+  site: admin && pending > 0 ? `建议${count(pending)}则` : '本站与建议',
+} as const;
+const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
+---
+
+{
+  !config || !site ? (
+    <InkLayout site={FALLBACK_SITE} title={title}>
+      <ConfigErrorView error={page.error!} />
+    </InkLayout>
+  ) : (
+    <InkLayout site={site} title={title} route={route}>
+      <svg class="defs" width="0" height="0" aria-hidden="true">
+        <filter id="rough">
+          <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3" />
+          <feDisplacementMap in="SourceGraphic" scale="2.4" />
+        </filter>
+      </svg>
+
+      <div
+        class="ink"
+        data-today={today}
+        data-timezone={timeZone}
+        data-rendered-at={nowMs}
+        data-site-title={site.title}
+      >
+        <Tools site={site} />
+
+        {/* ================= 首页 ================= */}
+        <section class="page home" data-page="home" hidden={route !== 'home'} aria-label="首页">
+          <div class="orb" aria-hidden="true" />
+          <svg class="hills" viewBox="0 0 1600 340" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 210 C120 150 200 170 300 120 S470 60 560 130 S760 190 860 110 S1060 30 1180 120 S1420 180 1600 100 V340 H0Z" />
+            <path d="M0 260 C150 220 240 250 360 200 S560 150 700 220 S940 270 1060 210 S1300 160 1420 230 S1560 250 1600 240 V340 H0Z" />
+            <path d="M0 300 C200 280 330 300 480 270 S760 250 900 290 S1160 310 1300 280 S1520 270 1600 290 V340 H0Z" />
+          </svg>
+
+          <aside class="ddl" aria-label="期限">
+            {instances.deadline && (
+              <>
+                <span class="ddl-h" aria-hidden="true">期 限</span>
+                <Deadlines server:defer id={instances.deadline.id} variant="strips" />
+              </>
+            )}
+          </aside>
+
+          <main class="mid">
+            {search && (
+              <InkSearch
+                client:load
+                id={search.id}
+                engines={search.options.engines}
+                sites={sites}
+                suggest={search.options.suggest !== false}
+                placeholder={search.options.placeholder === DEFAULT_PLACEHOLDER ? undefined : search.options.placeholder}
+              />
+            )}
+            <div class="below">
+              {favorites.length > 0 ? (
+                <div class="favs">
+                  <span class="favs-h" aria-hidden="true">
+                    {recent.length > 0 ? '近 访' : '常 用'}
+                  </span>
+                  {favorites.map((link, index) => (
+                    <a
+                      class="fav"
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ '--r': `${TILT[index] ?? 0}deg` }}
+                      title={`${link.description ?? link.name} · 按 ${index + 1} 打开`}
+                      data-visit
+                      data-fav={index + 1}
+                    >
+                      <span class="ic">
+                        <Icon name={link.name} icon={link.icon} iconDark={link.iconDark} lazy={false} />
+                        <kbd aria-hidden="true">{index + 1}</kbd>
+                      </span>
+                      <span class="nm">{link.name}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p class="favs-empty">
+                  {signedIn ? '在导航或搜索里点开网站，最近点过的会出现在这里。' : '登录后，最近点开过的网站会出现在这里。'}
+                </p>
+              )}
+
+              {groups.length > 0 && (
+                <>
+                  <div class="cats" role="tablist" aria-label="分类">
+                    {groups.map((group, index) => (
+                      <button
+                        type="button"
+                        class="cat"
+                        role="tab"
+                        id={`ink-cat-${group.id}`}
+                        data-cat={group.id}
+                        aria-controls={`ink-links-${group.id}`}
+                        aria-selected={index === 0 ? 'true' : 'false'}
+                        tabindex={index === 0 ? 0 : -1}
+                      >
+                        {group.name}
+                        <sup aria-hidden="true">{group.links.length}</sup>
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                          <path filter="url(#rough)" d="M78 18 C62 4 28 6 13 28 C-2 52 12 86 44 92 C76 98 98 74 94 46 C92 34 86 26 80 22" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                  {groups.map((group, index) => (
+                    <div
+                      class="links"
+                      role="tabpanel"
+                      id={`ink-links-${group.id}`}
+                      data-cat={group.id}
+                      aria-labelledby={`ink-cat-${group.id}`}
+                      hidden={index !== 0}
+                    >
+                      {group.links.map((link, i) => (
+                        <a class="lk" style={{ '--i': i }} href={link.url} target="_blank" rel="noopener noreferrer" data-visit>
+                          <Icon name={link.name} icon={link.icon} iconDark={link.iconDark} lazy={index !== 0} />
+                          {link.name}
+                          <small>{hostOf(link.url)}</small>
+                        </a>
+                      ))}
+                    </div>
+                  ))}
+                  {/* 上次看的分类：在绘制前换过去，不会先闪一下第一类 */}
+                  <script is:inline>
+                    try {
+                      const saved = localStorage.getItem('home:ink-cat');
+                      const tab = saved && document.querySelector(`.cat[data-cat="${CSS.escape(saved)}"]`);
+                      if (tab) {
+                        for (const other of document.querySelectorAll('.cat')) {
+                          const on = other === tab;
+                          other.setAttribute('aria-selected', String(on));
+                          other.tabIndex = on ? 0 : -1;
+                        }
+                        for (const panel of document.querySelectorAll('.links[data-cat]')) {
+                          panel.hidden = panel.dataset.cat !== saved;
+                        }
+                      }
+                    } catch {
+                      // 存储不可用：显示第一类
+                    }
+                  </script>
+                </>
+              )}
+            </div>
+          </main>
+
+          <aside class="ins" aria-label="今天">
+            <a
+              class="clock"
+              href="/cal"
+              data-go="cal"
+              data-clock
+              data-timezone={timeZone}
+              data-lang={site.lang}
+              aria-label={`${clock.hours}:${clock.minutes}，打开月令`}
+            >
+              <span data-part="hours">{clock.hours}</span><i aria-hidden="true">:</i><span data-part="minutes">{clock.minutes}</span>
+            </a>
+            <p class="vt">
+              <span class="big">
+                {cnMonth(clock.month)}
+                {cnNumber(clock.day)}日
+              </span>
+              <span>
+                <b>{weekday}</b>
+                {showLunar && `　农历${lunar.lunarMonth}${lunar.lunarDay}`}
+              </span>
+              <span>
+                {season && `${season}　`}
+                <span data-greeting>{greeting(hour)}</span>
+              </span>
+              {instances.weather && (
+                <span>
+                  {instances.weather.options.label && <b>{instances.weather.options.label}　</b>}
+                  <Weather server:defer id={instances.weather.id}>
+                    <span slot="fallback" class="wx wx-wait">
+                      看天色……
+                    </span>
+                  </Weather>
+                </span>
+              )}
+            </p>
+            <span class="seal" data-shichen aria-label={`现在是${shichen(hour)}`}>
+              {shichen(hour)}
+            </span>
+          </aside>
+
+          <nav class="ents" aria-label="页面">
+            {SUB_PAGES.map((name) => (
+              <a class="ent" href={`/${name}`} data-go={name}>
+                <span class="seal" data-seal={name} aria-hidden="true">
+                  {PAGES[name].seal}
+                </span>
+                <b>{PAGES[name].name}</b>
+                <small data-hint={name}>{HINTS[name]}</small>
+              </a>
+            ))}
+          </nav>
+        </section>
+
+        {/* ================= 月令 ================= */}
+        <SubFrame page="cal" route={route}>
+          <div class="calp">
+            {calendar ? (
+              route === 'cal' ? (
+                <InkCalendar client:load id={calendar.id} initial={initialMonth} today={today} timeZone={timeZone} />
+              ) : (
+                <InkCalendar client:idle id={calendar.id} initial={initialMonth} today={today} timeZone={timeZone} />
+              )
+            ) : (
+              <p class="none">layout.yaml 里没有放日历，这里暂时是空的。</p>
+            )}
+            {instances.deadline && (
+              <div class="soon">
+                <h2 class="blk-h">期 限</h2>
+                <Deadlines server:defer id={instances.deadline.id} variant="list">
+                  <p slot="fallback" class="none">
+                    正在读取……
+                  </p>
+                </Deadlines>
+              </div>
+            )}
+          </div>
+        </SubFrame>
+
+        {/* ================= 目录 ================= */}
+        <SubFrame page="dir" route={route}>
+          {groups.length > 0 ? (
+            <div class="dirp">
+              {groups.map((group) => (
+                <section class="dcol" aria-labelledby={`ink-dir-${group.id}`}>
+                  <h2 id={`ink-dir-${group.id}`}>
+                    {group.name}
+                    <small>{group.links.length}</small>
+                  </h2>
+                  {group.links.map((link) => (
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" data-visit>
+                      <Icon name={link.name} icon={link.icon} iconDark={link.iconDark} />
+                      <span>
+                        <b>{link.name}</b>
+                        <small>{hostOf(link.url)}</small>
+                      </span>
+                    </a>
+                  ))}
+                </section>
+              ))}
+            </div>
+          ) : (
+            <p class="none">
+              还没有网站。<a class="inline" href="/settings#links">去设置页添加</a>
+            </p>
+          )}
+        </SubFrame>
+
+        {/* ================= 游艺 ================= */}
+        <SubFrame page="play" route={route}>
+          {instances.steam ? (
+            <InkSteam client:idle id={instances.steam.id} count={instances.steam.options.count} />
+          ) : (
+            <p class="none">layout.yaml 里没有放 Steam，这里暂时是空的。</p>
+          )}
+        </SubFrame>
+
+        {/* ================= 跋 ================= */}
+        <SubFrame page="site" route={route}>
+          <div class="sitep">
+            <InkSite client:load counts={counts} signedIn={signedIn} />
+            {admin ? (
+              <InkAdmin client:idle pending={pending} entries={instances.server?.options.entries ?? []} timeZone={timeZone} />
+            ) : (
+              <div class="blk">
+                <h2 class="blk-h">小 记</h2>
+                <p class="keys-tip">
+                  <kbd>/</kbd> 或直接打字即搜索
+                  <br />
+                  <kbd>1</kbd>–<kbd>8</kbd> 打开最近访问
+                  <br />
+                  <kbd>←</kbd>
+                  <kbd>→</kbd> 首页换分类，子页翻页
+                  <br />
+                  滚轮上下翻页
+                  <br />
+                  <kbd>Esc</kbd> 或点子页的空白处回首页
+                </p>
+              </div>
+            )}
+          </div>
+        </SubFrame>
+
+        {signedIn && <span hidden data-link-visits />}
+      </div>
+
+      <script>
+        import './router';
+        import '../client/day-rollover';
+        import '../client/settings-sync';
+        import '../widgets/favorites/track';
+        import '../widgets/clock/clock';
+      </script>
+    </InkLayout>
+  )
+}

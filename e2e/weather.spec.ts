@@ -18,7 +18,7 @@ test.describe('天气', () => {
 
     try {
       // 被扣住的是 <link rel=preload> 预取的地址，load 事件会一直等它，所以只等到收到文档
-      await page.goto('/', { waitUntil: 'commit' });
+      await page.goto('/classic', { waitUntil: 'commit' });
       await expect.poll(() => intercepted).toBe(true);
       await expect(weather.getByText('测试城')).toBeVisible();
       await expect(weather.getByText('天气加载中')).toHaveCount(1);

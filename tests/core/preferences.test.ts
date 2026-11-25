@@ -88,7 +88,13 @@ describe('personalize', () => {
   it('puts the chosen engine first, and ignores engines the site does not offer', async () => {
     const pick = (engine: string) => optionsOf({ search: { engine, suggest: false, sites: true } }, 'search');
     expect(await pick('google')).toMatchObject({ engines: ['google', 'bing'] });
-    expect(await pick('brave')).toMatchObject({ engines: ['bing', 'google'] });
+    expect(await pick('baidu')).toMatchObject({ engines: ['bing', 'google'] });
+  });
+
+  it('reads a retired engine as no choice, keeping the rest of the search preference', async () => {
+    const stored = parsePreferences({ search: { engine: 'duckduckgo', suggest: false, sites: false } }, registry);
+    expect(stored.search).toMatchObject({ suggest: false, sites: false });
+    expect(await optionsOf(stored, 'search')).toMatchObject({ engines: ['bing', 'google'], suggest: false, sites: false });
   });
 
   it('turns suggestions on with a fallback provider when the site has them off, and can turn them off', async () => {

@@ -1,15 +1,18 @@
 import { isStrongMatch, normalizeQuery, searchEntries } from '../../lib/fuzzy';
 import { ENGINES, searchUrl, type EngineId } from './engines';
+import { matchHistory, MAX_HISTORY } from './history';
 import type { SiteEntry } from './sites';
 
 /**
  * 搜索面板的纯逻辑（浏览器端使用，不能引用服务端模块）。
- * 面板顺序固定：匹配的网站 → 用搜索引擎搜索输入内容 → 联想词。
+ * 面板顺序固定：匹配的网站 → 用搜索引擎搜索输入内容 → 搜过的词 → 联想词。
+ * 输入框是空的时候只列搜过的词（最近十条）。
  */
 
 export type SearchOption =
   | { readonly kind: 'site'; readonly key: string; readonly site: SiteEntry }
   | { readonly kind: 'web'; readonly key: 'web'; readonly text: string }
+  | { readonly kind: 'history'; readonly key: string; readonly text: string }
   | { readonly kind: 'suggest'; readonly key: string; readonly text: string };
 
 export const MAX_SITES = 5;
@@ -27,25 +30,33 @@ export function buildOptions(
   query: string,
   sites: readonly SiteEntry[],
   suggestions: readonly string[],
+  history: readonly string[] = [],
 ): SearchOption[] {
   const text = query.trim();
-  if (text === '') return [];
+  if (text === '') {
+    return history.slice(0, MAX_HISTORY).map((entry) => ({ kind: 'history', key: `history:${entry}`, text: entry }) as const);
+  }
   const self = normalizeQuery(text);
   // key 在列表内唯一：联想异步到达时，已高亮的项不会跳走
   const siteOptions = searchEntries(text, sites, MAX_SITES).map(
     (site, index) => ({ kind: 'site', key: `site:${index}`, site }) as const,
   );
+  const historyOptions = matchHistory(history, text).map(
+    (entry) => ({ kind: 'history', key: `history:${entry}`, text: entry }) as const,
+  );
+  // 联想里和搜过的词重复的不再列一遍
+  const taken = new Set([self, ...historyOptions.map((option) => normalizeQuery(option.text))]);
   const suggestOptions = [...new Set(suggestions)]
-    .filter((suggestion) => normalizeQuery(suggestion) !== self)
+    .filter((suggestion) => !taken.has(normalizeQuery(suggestion)))
     .slice(0, MAX_SUGGESTIONS)
     .map((suggestion) => ({ kind: 'suggest', key: `suggest:${suggestion}`, text: suggestion }) as const);
-  return [...siteOptions, { kind: 'web', key: 'web', text }, ...suggestOptions];
+  return [...siteOptions, { kind: 'web', key: 'web', text }, ...historyOptions, ...suggestOptions];
 }
 
-/** 回车默认执行的一项：第一个网站是前缀级匹配时打开它，否则用搜索引擎搜索 */
+/** 回车默认执行的一项：第一个网站是前缀级匹配时打开它，否则用搜索引擎搜索；什么都没输入时不默认选哪条旧记录 */
 export function defaultKey(options: readonly SearchOption[], query: string): string | undefined {
   const first = options[0];
-  if (!first) return undefined;
+  if (!first || query.trim() === '') return undefined;
   return first.kind === 'site' && isStrongMatch(query, first.site) ? first.key : 'web';
 }
 

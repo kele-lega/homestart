@@ -98,7 +98,7 @@ describe('targetOf', () => {
     const [github, web, suggestion] = buildOptions('git', SITES, ['git 教程']);
     expect(targetOf(github!, 'google')).toBe('https://github.com/');
     expect(targetOf(web!, 'bing')).toBe('https://www.bing.com/search?q=git');
-    expect(targetOf(suggestion!, 'duckduckgo')).toBe('https://duckduckgo.com/?q=git+%E6%95%99%E7%A8%8B');
+    expect(targetOf(suggestion!, 'baidu')).toBe('https://www.baidu.com/s?wd=git+%E6%95%99%E7%A8%8B');
   });
 });
 

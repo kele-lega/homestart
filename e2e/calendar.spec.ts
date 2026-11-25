@@ -178,6 +178,7 @@ test.describe('自己添加的日程', () => {
     await createUser(page.request, username);
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
+    await gotoHome(page);
     await expect(calendar(page).getByText('正在读取日程…')).toHaveCount(0);
 
     // 新建：默认是今天、下一个整点起一小时，只填标题
@@ -198,6 +199,7 @@ test.describe('自己添加的日程', () => {
     const other = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
     const second = await other.newPage();
     await signIn(second, username, PASSWORD);
+    await second.goto('/classic');
     await expect(second.locator('#w-agenda').getByText('牙医复诊')).toBeVisible();
     await other.close();
 
@@ -222,6 +224,7 @@ test.describe('自己添加的日程', () => {
     await createUser(page.request, username);
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
+    await gotoHome(page);
     await expect(calendar(page).getByText('正在读取日程…')).toHaveCount(0);
 
     await calendar(page).getByRole('button', { name: '+ 新建' }).click();

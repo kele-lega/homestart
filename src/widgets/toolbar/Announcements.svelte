@@ -25,9 +25,11 @@
     /** 站内登录的管理员：能发布、删除 */
     admin: boolean;
     timeZone: string;
+    /** 留白里按钮是两个字（「告示」），不是喇叭圆；样子由外面的 .tools 决定 */
+    label?: string | undefined;
   }
 
-  let { announcements, admin, timeZone }: Props = $props();
+  let { announcements, admin, timeZone, label }: Props = $props();
 
   let list = $state(untrack(() => announcements));
   let sheet = $state<PaperDialog>();
@@ -140,18 +142,29 @@
 </script>
 
 <!-- 关上时浏览器把焦点还给打开它的这个按钮 -->
-<button
-  type="button"
-  class="circle"
-  aria-haspopup="dialog"
-  aria-label={unread ? '公告（有新的）' : '公告'}
-  onclick={() => open()}
->
-  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-    {#each MEGAPHONE as d (d)}<path {d} />{/each}
-  </svg>
-  {#if unread}<span class="dot" aria-hidden="true"></span>{/if}
-</button>
+{#if label}
+  <button
+    type="button"
+    class="tool"
+    data-unread={unread ? '' : undefined}
+    aria-haspopup="dialog"
+    aria-label={unread ? `${label}（有新的）` : label}
+    onclick={() => open()}>{label}</button
+  >
+{:else}
+  <button
+    type="button"
+    class="circle"
+    aria-haspopup="dialog"
+    aria-label={unread ? '公告（有新的）' : '公告'}
+    onclick={() => open()}
+  >
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      {#each MEGAPHONE as d (d)}<path {d} />{/each}
+    </svg>
+    {#if unread}<span class="dot" aria-hidden="true"></span>{/if}
+  </button>
+{/if}
 
 <PaperDialog bind:this={sheet} title="公告" labelId="announce-title" onclose={onClosed}>
   {#snippet actions()}

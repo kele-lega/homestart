@@ -25,3 +25,6 @@ __pycache__/
 services/*/data/**/cache.json
 services/*/data/*.tmp
 services/ical-proxy/data/users.json
+
+# 本地预览（./start.sh）的账号和数据
+.preview/

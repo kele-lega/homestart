@@ -37,18 +37,18 @@ test.describe('设置', () => {
     await gotoSettings(page);
     const search = card(page, '搜索');
     await expect(search.getByRole('radio', { name: 'Google' })).toBeChecked();
-    await search.getByRole('radio', { name: 'DuckDuckGo' }).check();
+    await search.getByRole('radio', { name: 'Yandex' }).check();
     await search.getByRole('button', { name: '保存' }).click();
     await expect(search.getByRole('status')).toHaveText('已保存，回主页就能看到');
     await expect(search.getByText('已自定义')).toBeVisible();
 
     await gotoHome(page);
     const box = page.getByRole('combobox', { name: '搜索', exact: true });
-    await expect(box).toHaveAttribute('placeholder', '搜索网站，或用 DuckDuckGo 搜索…');
+    await expect(box).toHaveAttribute('placeholder', '搜索网站，或用 Yandex 搜索…');
     await box.fill('persist');
     const tab = context.waitForEvent('page');
     await box.press('Enter');
-    await expect(await tab).toHaveURL('https://duckduckgo.com/?q=persist');
+    await expect(await tab).toHaveURL(/^https:\/\/yandex\.com\/search\/\?text=persist/);
 
     await gotoSettings(page);
     await search.getByRole('button', { name: '恢复默认' }).click();

@@ -1,0 +1,200 @@
+/*
+ * 留白的设计变量：一张宣纸、一管墨、一方朱砂印。
+ * 名字和 styles/tokens.css 一样，只换取值：共用的组件（弹窗、表单、卡片、主题切换）引用的变量都在这里有对应，
+ * 不用改组件就换成留白的样子。选择器带上 html[data-skin='ink']，比 tokens.css 的 :root 更具体，谁先加载都一样。
+ * 颜色用 light-dark()，跟随 <html data-theme> 的 color-scheme；图片之类不是颜色的变量在文件末尾分两套写
+ */
+html[data-skin='ink'] {
+  /* 纸：paper 宣纸，desk 纸下面那层（条幅、挂轴的底），surface 浮起来的那张 */
+  --paper: light-dark(#f4f1ea, #101215);
+  --desk: light-dark(#ebe6db, #181b1f);
+  --surface: light-dark(#f8f6f0, #15181c);
+  --skeleton: light-dark(#e6e1d6, #1d2025);
+
+  /* 墨：ink 浓墨，ink-2 淡墨，ink-3 只用在小字说明（对比度仍在 4.5:1 左右），ink-4 是印在纸上的提示 */
+  --ink: light-dark(#191816, #e8e3d8);
+  --ink-2: light-dark(#4d4a44, #b2ac9f);
+  --ink-3: light-dark(#736f67, #8f8a80);
+  --ink-4: light-dark(#c5c0b5, #3b3a37);
+  --rule: light-dark(#d9d4c9, #2b2e33);
+  --rule-soft: color-mix(in srgb, var(--rule) 55%, transparent);
+  /* 碰到的地方铺一层很淡的墨 */
+  --wash: light-dark(rgb(25 24 22 / 0.045), rgb(232 227 216 / 0.05));
+
+  /* 朱砂：印章、今天、最急的一条。花青：数据含义（周末、节日、链接） */
+  --cinnabar: light-dark(#c1351f, #cf4a33);
+  --cinnabar-ink: light-dark(#fbf3e6, #fbefe2);
+  --red: var(--cinnabar);
+  --blue: light-dark(#3b5a6e, #93b3c6);
+
+  /* 分类色收成几种墨色，不抢朱砂 */
+  --t1: light-dark(#3b5a6e, #93b3c6);
+  --t2: light-dark(#5a5470, #b4abd0);
+  --t3: light-dark(#7a5b33, #d2b384);
+  --t4: light-dark(#4e6650, #a6c3a4);
+  --t5: light-dark(#7a4f5c, #d4a6b4);
+
+  /* 原来樱花色的地方（悬停、聚焦、选中）换成朱砂和淡墨 */
+  --sakura: light-dark(rgb(193 53 31 / 0.2), rgb(207 74 51 / 0.35));
+  --sakura-deep: var(--cinnabar);
+  --sakura-wash: var(--wash);
+  --mark-petal: var(--cinnabar);
+  --mark-heart: var(--cinnabar-ink);
+  --ribbon: var(--cinnabar);
+  --ribbon-ink: var(--cinnabar-ink);
+
+  /* 远山三层、朝阳 */
+  --hill-1: light-dark(rgb(25 24 22 / 0.05), rgb(232 227 216 / 0.025));
+  --hill-2: light-dark(rgb(25 24 22 / 0.08), rgb(232 227 216 / 0.045));
+  --hill-3: light-dark(rgb(25 24 22 / 0.13), rgb(232 227 216 / 0.07));
+  --sun: light-dark(rgb(193 53 31 / 0.14), rgb(232 227 216 / 0.07));
+  /* 最近访问的小纸片 */
+  --tile: light-dark(#fbf9f4, #ebe5d8);
+  --tile-edge: light-dark(rgb(25 24 22 / 0.09), transparent);
+  /* 深色时给图标垫一块浅底，黑色的标志不会融进墨里 */
+  --icon-plate: light-dark(transparent, #e2dccf);
+  /* 转场时那层「墨」 */
+  --ink-wash: light-dark(#0b0a09, #4a4844);
+  /* 画轴 */
+  --rod-1: light-dark(#3a2c1f, #1e1712);
+  --rod-2: light-dark(#6b543c, #4a3a2a);
+
+  --lift:
+    0 0 0 1px var(--rule),
+    0 30px 60px -30px light-dark(rgb(0 0 0 / 0.35), rgb(0 0 0 / 0.7));
+  --rule-heavy: 1.5px solid var(--ink);
+  --rule-thin: 1px solid var(--rule);
+
+  /* 字：宋体是正文，马善政是毛笔字，Cormorant 是数字和西文 */
+  --brush: 'Ma Shan Zheng', 'Kaiti SC', STKaiti, KaiTi, serif;
+  --song: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Noto Serif SC', STSong, SimSun, serif;
+  --latin: 'Cormorant Garamond', 'Noto Serif SC', serif;
+  --font-body: var(--song);
+  --serif: var(--song);
+  --label: var(--song);
+  --num: var(--latin);
+  --pen: var(--brush);
+
+  --ease-ink: cubic-bezier(0.65, 0, 0.25, 1);
+  --pad: clamp(1.25rem, 4vw, 6rem);
+
+  /* 印章的边：带一点毛边的圆角方块，只当遮罩用 */
+  --stamp: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cfilter id='r' x='-10%25' y='-10%25' width='120%25' height='120%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.12' numOctaves='2' seed='3' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='5' result='d'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.5' numOctaves='2' seed='9' result='s'/%3E%3CfeColorMatrix in='s' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -20 0 0 0 15.6' result='h'/%3E%3CfeComposite in='d' in2='h' operator='in'/%3E%3C/filter%3E%3Crect x='3' y='3' width='94' height='94' rx='5' filter='url(%23r)'/%3E%3C/svg%3E");
+  /* 一滴墨：转场的遮罩。浏览器端会预先画成位图（见 router.ts 的 bakeBlot） */
+  --blot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f' x='-30%25' y='-30%25' width='160%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='3' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='28'/%3E%3C/filter%3E%3Cg filter='url(%23f)'%3E%3Ccircle cx='100' cy='100' r='64'/%3E%3Ccircle cx='166' cy='66' r='8'/%3E%3Ccircle cx='38' cy='158' r='6'/%3E%3Ccircle cx='152' cy='160' r='4'/%3E%3Ccircle cx='32' cy='50' r='5'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* 浅色的纸纹、图标的混合方式 */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .35 0 0 0 0 .3 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --blend: multiply;
+}
+
+/* 深色：固定深色，或者跟随系统而系统是深色 */
+html[data-skin='ink'][data-theme='dark'] {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .75 0 0 0 0 .72 0 0 0 0 .66 0 0 0 .03 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --blend: normal;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-skin='ink']:not([data-theme='light']) {
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .75 0 0 0 0 .72 0 0 0 0 .66 0 0 0 .03 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --blend: normal;
+  }
+}
+
+/* 纸面本身：宣纸底色加纸纹，字是宋体 */
+html[data-skin='ink'] {
+  font-size: clamp(14px, calc(9.4px + 0.36vw), 22px);
+  background: var(--paper);
+}
+
+html[data-skin='ink'] body {
+  background-color: var(--paper);
+  background-image: var(--grain);
+  background-size: auto;
+  background-attachment: scroll;
+  font-family: var(--song);
+}
+
+html[data-skin='ink'] ::selection {
+  color: var(--cinnabar-ink);
+  background: var(--cinnabar);
+}
+
+/* 键盘移到链接、按钮上时画一圈朱砂虚线 */
+html[data-skin='ink'] :focus-visible {
+  outline: 1px dashed var(--cinnabar);
+  outline-offset: 4px;
+}
+
+/*
+ * 打字的地方不套框：光标已经说明焦点在这，各自的下划线（问的那一笔、登录页的横线、添一笔的底线）聚焦时会变成朱砂色。
+ * 勾选框、单选框之类不打字的控件照常画虚线
+ */
+html[data-skin='ink']
+  :is(
+    textarea,
+    input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='button'], [type='reset'], [type='image'])
+  ):focus-visible {
+  outline: none;
+}
+
+/* 印章：朱砂底、毛边，留白里各处共用 */
+.seal {
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  font-family: var(--brush);
+  font-weight: 400;
+  color: var(--cinnabar-ink);
+  background: var(--cinnabar);
+  border-radius: 3px;
+  -webkit-mask: var(--stamp) center / 100% 100% no-repeat;
+  mask: var(--stamp) center / 100% 100% no-repeat;
+}
+
+/* 切换明暗时的「染」，同一页里的 View Transition（见 ink/theme.ts） */
+@property --s {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+html.vt-theme::view-transition-old(root) {
+  animation: none;
+}
+
+html.vt-theme::view-transition-new(root) {
+  -webkit-mask: var(--blot) no-repeat;
+  mask: var(--blot) no-repeat;
+  -webkit-mask-size: var(--s) var(--s);
+  mask-size: var(--s) var(--s);
+  -webkit-mask-position: calc(var(--x) - var(--s) / 2) calc(var(--y) - var(--s) / 2);
+  mask-position: calc(var(--x) - var(--s) / 2) calc(var(--y) - var(--s) / 2);
+  animation: ink-grow 1.2s cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+
+@keyframes ink-grow {
+  from {
+    --s: 0px;
+  }
+
+  to {
+    --s: 380vmax;
+  }
+}
+
+/* 留白各页之间整页跳转（首页 ⇄ 登录、设置……）：浏览器默认的交叉淡化，稍慢一点 */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.45s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}

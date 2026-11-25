@@ -25,7 +25,7 @@ test.describe('页头工具栏', () => {
     await createUser(page.request, username);
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
-    await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+    await gotoHome(page);
 
     const avatar = page.getByRole('link', { name: `个人中心（${username}）` });
     const sessions = page.getByRole('link', { name: '登录设备' });
@@ -123,7 +123,7 @@ test.describe('页头工具栏', () => {
     await createUser(page.request, username);
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
-    await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+    await gotoHome(page);
 
     await page.getByRole('link', { name: `个人中心（${username}）` }).hover();
     await page.getByRole('button', { name: '退出登录' }).click();
@@ -162,7 +162,7 @@ test.describe('页头工具栏', () => {
   test('公告：管理员发布、删除；别人看到小红点，打开就算看过', async ({ page }, testInfo) => {
     const title = `e2e 公告 ${testInfo.project.name} ${RUN}`;
     await signIn(page, E2E_ADMIN.username, E2E_ADMIN.password);
-    await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+    await gotoHome(page);
     const trigger = page.getByRole('button', { name: /^公告/ });
     const dialog = page.getByRole('dialog', { name: '公告' });
 
@@ -198,7 +198,7 @@ test.describe('页头工具栏', () => {
     expect(denied.status()).toBe(403);
 
     await signIn(page, E2E_ADMIN.username, E2E_ADMIN.password);
-    await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+    await gotoHome(page);
     await trigger.click();
     const mine = dialog.getByRole('listitem').filter({ hasText: title });
     await mine.getByRole('button', { name: '删除' }).click();

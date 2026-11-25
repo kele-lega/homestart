@@ -18,7 +18,7 @@ const run = (opts: ReturnType<typeof options>, q: string, user = 'alice') =>
 
 describe('search widget options', () => {
   it('defaults to every engine, Bing suggestions and site search', () => {
-    expect(options()).toMatchObject({ engines: ['google', 'bing', 'duckduckgo', 'brave'], suggest: 'bing', sites: true });
+    expect(options()).toMatchObject({ engines: ['google', 'bing', 'yandex', 'baidu'], suggest: 'bing', sites: true });
   });
 
   it('rejects empty, duplicate or unknown engines and unknown suggestion providers', () => {
@@ -26,6 +26,11 @@ describe('search widget options', () => {
       expect(search.options.safeParse(raw).success, JSON.stringify(raw)).toBe(false);
     }
     expect(options({ suggest: false }).suggest).toBe(false);
+  });
+
+  it('drops retired engines from an old configuration instead of failing', () => {
+    expect(options({ engines: ['duckduckgo', 'bing', 'brave'] }).engines).toEqual(['bing']);
+    expect(search.options.safeParse({ engines: ['brave'] }).success).toBe(false);
   });
 });
 

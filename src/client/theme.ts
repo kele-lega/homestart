@@ -2,7 +2,9 @@ import { THEME_STORAGE_KEY, parseTheme, stepTheme, type Theme } from '../lib/the
 
 /**
  * 主题切换按钮组（ThemeSwitch.astro）：role="radiogroup"，方向键移动选择。
- * 切换时用 View Transitions 做一次整页交叉淡化；浏览器不支持或用户要求减少动效时直接切换。
+ * 切换时用 View Transitions 做一次整页交叉淡化；留白（<html data-skin="ink">）里换成「染」：
+ * 新的明暗像一滴墨从刚才点的地方晕开（键盘切换就从顶上），样式在 ink/tokens.css。
+ * 浏览器不支持或用户要求减少动效时直接切换。
  */
 
 const root = document.documentElement;
@@ -30,6 +32,19 @@ function sync(theme: Theme): void {
   }
 }
 
+/** 最近一次按下指针的位置和时刻：「染」从这里开始 */
+let lastPointer: { readonly x: number; readonly y: number; readonly at: number } | undefined;
+addEventListener('pointerdown', (event) => (lastPointer = { x: event.clientX, y: event.clientY, at: Date.now() }), true);
+
+function inkSpread(update: () => void): void {
+  const recent = lastPointer && Date.now() - lastPointer.at < 1500 ? lastPointer : { x: innerWidth / 2, y: 0 };
+  root.style.setProperty('--x', `${recent.x}px`);
+  root.style.setProperty('--y', `${recent.y}px`);
+  root.classList.add('vt-theme');
+  const done = () => root.classList.remove('vt-theme');
+  document.startViewTransition(update).finished.then(done, done);
+}
+
 function apply(theme: Theme): void {
   sync(theme);
   if (theme === currentTheme()) return;
@@ -37,8 +52,9 @@ function apply(theme: Theme): void {
   const update = () => {
     root.dataset.theme = theme;
   };
-  if ('startViewTransition' in document && !reducedMotion.matches) document.startViewTransition(update);
-  else update();
+  if (!('startViewTransition' in document) || reducedMotion.matches) update();
+  else if (root.dataset.skin === 'ink') inkSpread(update);
+  else document.startViewTransition(update);
 }
 
 function optionOf(target: EventTarget | null): HTMLButtonElement | null {

@@ -51,11 +51,11 @@ export const test = base.extend({
 export { expect };
 
 /**
- * 打开首页，等 client:load 岛屿注水完成（注水后 astro-island 会去掉 ssr 属性）、
+ * 打开旧版首页（/classic；新的留白首页见 ink.spec.ts 的 gotoInk），等 client:load 岛屿注水完成（注水后 astro-island 会去掉 ssr 属性）、
  * 服务端岛屿都换上固定内容（骨架屏里读屏用的「…加载中」全部消失）
  */
 export async function gotoHome(page: Page): Promise<void> {
-  await page.goto('/');
+  await page.goto('/classic');
   await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
   await expect(page.getByText('加载中')).toHaveCount(0);
   await expect(page.locator('[data-e2e-island]').first()).toBeAttached();

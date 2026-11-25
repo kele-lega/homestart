@@ -2,16 +2,20 @@ import { z } from 'astro/zod';
 import { createCache } from '../../core/cache';
 import { definePreferences, defineWidget, type WidgetAction } from '../../core/widget';
 import { normalizeQuery } from '../../lib/fuzzy';
-import { ENGINE_IDS } from './engines';
+import { ENGINE_IDS, RETIRED_ENGINE_IDS } from './engines';
 import { MAX_QUERY } from './options';
 import { fetchSuggestions, SUGGEST_PROVIDERS, type SuggestProvider } from './suggest';
 
 const SearchOptions = z.strictObject({
   /** 可选的搜索引擎，第一个为默认；登录用户可以在设置页换成其中另一个 */
   engines: z
-    .array(z.enum(ENGINE_IDS))
-    .min(1)
-    .refine((ids) => new Set(ids).size === ids.length, '搜索引擎不能重复')
+    .preprocess(
+      (ids) => (Array.isArray(ids) ? ids.filter((id) => !RETIRED_ENGINE_IDS.has(id)) : ids),
+      z
+        .array(z.enum(ENGINE_IDS))
+        .min(1)
+        .refine((ids) => new Set(ids).size === ids.length, '搜索引擎不能重复'),
+    )
     .default([...ENGINE_IDS]),
   /** 联想来源；false 关闭联想 */
   suggest: z.union([z.enum(SUGGEST_PROVIDERS), z.literal(false)]).default('bing'),
@@ -25,7 +29,11 @@ export type SearchOptions = z.infer<typeof SearchOptions>;
 
 /** 设置页的搜索一栏：用哪个引擎、要不要联想、要不要同时搜收录的网站 */
 const SearchPreference = z.strictObject({
-  engine: z.enum(ENGINE_IDS, { error: '没有这个搜索引擎' }),
+  /** 没有（或者是已经撤掉的引擎）就用配置里的第一个 */
+  engine: z.preprocess(
+    (id) => (RETIRED_ENGINE_IDS.has(id) ? undefined : id),
+    z.enum(ENGINE_IDS, { error: '没有这个搜索引擎' }).optional(),
+  ),
   suggest: z.boolean(),
   sites: z.boolean(),
 });
@@ -37,7 +45,7 @@ const FALLBACK_SUGGEST: SuggestProvider = 'bing';
 
 /** 选中的引擎排到第一个（就是在用的那个）；配置里没列出的引擎不加进来，也就不会生效 */
 function applySearch(options: SearchOptions, { engine, suggest, sites }: SearchPreference): SearchOptions {
-  const engines = options.engines.includes(engine)
+  const engines = engine && options.engines.includes(engine)
     ? [engine, ...options.engines.filter((id) => id !== engine)]
     : options.engines;
   const provider = suggest ? (options.suggest === false ? FALLBACK_SUGGEST : options.suggest) : false;

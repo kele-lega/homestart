@@ -6,8 +6,8 @@ describe('searchUrl', () => {
   it('builds each engine URL with the query percent-encoded', () => {
     expect(searchUrl('google', 'astro 天气')).toBe('https://www.google.com/search?q=astro+%E5%A4%A9%E6%B0%94');
     expect(searchUrl('bing', 'a&b=c')).toBe('https://www.bing.com/search?q=a%26b%3Dc');
-    expect(searchUrl('duckduckgo', 'x')).toBe('https://duckduckgo.com/?q=x');
-    expect(searchUrl('brave', 'x')).toBe('https://search.brave.com/search?q=x');
+    expect(searchUrl('yandex', 'x')).toBe('https://yandex.com/search/?text=x');
+    expect(searchUrl('baidu', '中 文')).toBe('https://www.baidu.com/s?wd=%E4%B8%AD+%E6%96%87');
   });
 
   it('keeps every engine on https with a form-compatible action', () => {

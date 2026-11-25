@@ -1,0 +1,41 @@
+---
+/**
+ * 网站图标：有 icon 就是图片（另有 iconDark 时深色主题换那一张，见 ink.css 的 [data-variant]），没有就是首字母。
+ * 图片加载失败时由 router.ts 里的全局监听换成首字母的小方块，不写内联 onerror
+ */
+interface Props {
+  readonly name: string;
+  readonly icon?: string | undefined;
+  readonly iconDark?: string | undefined;
+  /** 藏在没展开的分类里的图标：等分类展开再下载 */
+  readonly lazy?: boolean;
+}
+
+const { name, icon, iconDark, lazy = true } = Astro.props;
+const letter = Array.from(name.trim())[0]?.toUpperCase() ?? '·';
+const loading = lazy ? 'lazy' : 'eager';
+---
+
+{
+  icon ? (
+    <>
+      <img
+        class="ico"
+        src={icon}
+        alt=""
+        data-n={name}
+        data-variant={iconDark ? 'light' : undefined}
+        loading={loading}
+        decoding="async"
+        referrerpolicy="no-referrer"
+      />
+      {iconDark && (
+        <img class="ico" src={iconDark} alt="" data-n={name} data-variant="dark" loading={loading} decoding="async" referrerpolicy="no-referrer" />
+      )}
+    </>
+  ) : (
+    <span class="ico letter" aria-hidden="true">
+      {letter}
+    </span>
+  )
+}
