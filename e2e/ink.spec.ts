@@ -139,6 +139,23 @@ test.describe('留白：页面', () => {
     await expect(page.locator('.page.home')).toBeVisible();
   });
 
+  test('期限条幅是竖长条：再多也不把首页挤歪', async ({ page }) => {
+    // 测试账号没有日历订阅，照服务端的样子塞几条进去
+    await gotoInk(page);
+    await page.locator('.ddl').evaluate((ddl) => {
+      const strip = (title: string, days: number, len: number) =>
+        `<a class="strip" href="/cal" data-hot style="--len:${len}"><span class="t">${title}</span>` +
+        `<span class="d"><span class="n">${days}</span>日</span><span class="note">12.10</span></a>`;
+      ddl.innerHTML = strip('订阅到期', 13, 15.5) + strip('云服务器到期', 15, 16.3) + strip('还款', 25, 20.5);
+    });
+    for (const box of await page.locator('.strip').evaluateAll((strips) => strips.map((s) => s.getBoundingClientRect().toJSON()))) {
+      expect(box.height).toBeGreaterThan(box.width * 2.5);
+      expect(box.width).toBeLessThan(80);
+    }
+    const search = await page.locator('#ink-q').boundingBox();
+    expect(search!.width).toBeGreaterThan(200);
+  });
+
   test('分类：点一个换一组网站，刷新后还记得', async ({ page }) => {
     await gotoInk(page);
     const work = page.getByRole('tab', { name: /^办公/ });

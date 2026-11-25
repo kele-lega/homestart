@@ -424,8 +424,9 @@ html[data-theme='dark'] .ico[data-variant='dark'] {
   display: flex;
   align-items: center;
   gap: 0.9rem;
-  min-block-size: calc(var(--len) * 1rem);
-  margin-block-start: 3.4rem;
+  /* 竖排：块方向是横的，长短和上边距要用 height / top 这种物理属性 */
+  min-height: calc(var(--len) * 1rem);
+  margin-top: 3.4rem;
   padding: 1.1rem 0.55rem 1rem;
   color: var(--ink);
   writing-mode: vertical-rl;
@@ -439,10 +440,10 @@ html[data-theme='dark'] .ico[data-variant='dark'] {
 
 .strip::before {
   position: absolute;
-  inset-block-start: -1.2rem;
-  inset-inline-start: 50%;
-  inline-size: 1px;
-  block-size: 1.2rem;
+  top: -1.2rem;
+  left: 50%;
+  width: 1px;
+  height: 1.2rem;
   content: '';
   background: var(--ink-2);
 }
@@ -465,7 +466,7 @@ html[data-theme='dark'] .ico[data-variant='dark'] {
 }
 
 .strip .d {
-  margin-block-start: auto;
+  margin-top: auto;
   font-size: 0.78rem;
   letter-spacing: 0.2em;
   opacity: 0.75;
@@ -2320,8 +2321,8 @@ html.vt-scroll.vt-b::view-transition-group(rod) {
   }
 
   .strip {
-    min-block-size: calc(var(--len) * 0.55rem);
-    margin-block-start: 0.8rem;
+    min-height: calc(var(--len) * 0.55rem);
+    margin-top: 0.8rem;
   }
 
   .ents {
