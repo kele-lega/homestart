@@ -23,13 +23,22 @@ describe('suggestUrl', () => {
   it('targets the fixed provider host with the encoded query', () => {
     const url = new URL(suggestUrl('bing', 'astro 天气'));
     expect(url.host).toBe('api.bing.com');
-    expect(url.searchParams.get('query')).toBe('astro 天气');
+    expect(url.pathname).toBe('/qsonhs.aspx');
+    expect(url.searchParams.get('q')).toBe('astro 天气');
+    const baidu = new URL(suggestUrl('baidu', '天气'));
+    expect([baidu.host, baidu.searchParams.get('wd'), baidu.searchParams.get('ie'), baidu.searchParams.get('action')]).toEqual([
+      'suggestion.baidu.com',
+      '天气',
+      'utf-8',
+      'opensearch',
+    ]);
+    expect(new URL(suggestUrl('yandex', 'x')).searchParams.get('part')).toBe('x');
   });
 });
 
 describe('parseSuggestions', () => {
   it('reads the OpenSearch suggestion array and ignores extra members', () => {
-    expect(parseSuggestions(['astro', ['astro build', 'astro db'], [], { extra: true }], 'astro')).toEqual([
+    expect(parseSuggestions('baidu', ['astro', ['astro build', 'astro db'], [], { extra: true }], 'astro')).toEqual([
       'astro build',
       'astro db',
     ]);
@@ -37,18 +46,34 @@ describe('parseSuggestions', () => {
 
   it('drops blanks, duplicates, the query itself and overlong entries, then caps the list', () => {
     const many = ['Astro', ' astro ', '', 'a'.repeat(201), ...Array.from({ length: 12 }, (_, i) => `astro ${i}`)];
-    const result = parseSuggestions(['astro', many], 'astro');
+    const result = parseSuggestions('yandex', ['astro', many], 'astro');
     expect(result).toHaveLength(8);
     expect(result[0]).toBe('astro 0');
     expect(new Set(result).size).toBe(result.length);
   });
 
   it('drops malformed UTF-16 (lone surrogates), which the browser cannot URL-encode', () => {
-    expect(parseSuggestions(['astro', ['astro \ud800', 'astro 😀', '\udfff']], 'astro')).toEqual(['astro 😀']);
+    expect(parseSuggestions('google', ['astro', ['astro \ud800', 'astro 😀', '\udfff']], 'astro')).toEqual(['astro 😀']);
   });
 
   it('rejects payloads that are not OpenSearch shaped', () => {
-    expect(() => parseSuggestions({ q: 'astro' }, 'astro')).toThrow();
-    expect(() => parseSuggestions(['astro', [1, 2]], 'astro')).toThrow();
+    expect(() => parseSuggestions('baidu', { q: 'astro' }, 'astro')).toThrow();
+    expect(() => parseSuggestions('baidu', ['astro', [1, 2]], 'astro')).toThrow();
+  });
+
+  it("reads Bing's own suggestion format, including the empty answer without Results", () => {
+    const payload = {
+      AS: {
+        Query: 'astro',
+        FullResults: 1,
+        Results: [
+          { Type: 'AS', Suggests: [{ Txt: 'astro', Type: 'LC' }, { Txt: 'astro build', Type: 'LS' }] },
+          { Type: 'AS', Suggests: [{ Txt: 'astro db', Type: 'LS' }] },
+        ],
+      },
+    };
+    expect(parseSuggestions('bing', payload, 'astro')).toEqual(['astro build', 'astro db']);
+    expect(parseSuggestions('bing', { AS: { Query: 'zxq', FullResults: 0 } }, 'zxq')).toEqual([]);
+    expect(() => parseSuggestions('bing', ['astro', ['astro build']], 'astro')).toThrow();
   });
 });
