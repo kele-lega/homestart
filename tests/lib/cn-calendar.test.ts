@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cnDayInfo, currentTerm, FESTIVAL_NAMES } from '../../src/lib/cn-calendar';
+import { cnDayInfo, cnGanzhi, currentTerm, FESTIVAL_NAMES, seasonOfTerm, SOLAR_TERMS } from '../../src/lib/cn-calendar';
 
 describe('cnDayInfo', () => {
   it('shows a solar term only on the day it begins', () => {
@@ -98,5 +98,37 @@ describe('currentTerm', () => {
     expect(currentTerm(2026, 11, 22)).toEqual({ name: '小雪', days: 0 });
     expect(currentTerm(2026, 11, 25)).toEqual({ name: '小雪', days: 3 });
     expect(currentTerm(2026, 11, 10).name).toBe('立冬');
+  });
+});
+
+describe('cnGanzhi', () => {
+  it('names year, month and day in the sixty cycle', () => {
+    expect(cnGanzhi(2026, 11, 26)).toEqual({ year: '丙午', month: '己亥', day: '甲辰' });
+    expect(cnGanzhi(2000, 1, 1).day).toBe('戊午');
+  });
+
+  it('turns the year at 立春, not on 1 January or 春节', () => {
+    expect(cnGanzhi(2026, 2, 3)).toMatchObject({ year: '乙巳', month: '己丑' });
+    expect(cnGanzhi(2026, 2, 4)).toMatchObject({ year: '丙午', month: '庚寅' });
+  });
+});
+
+describe('seasonOfTerm', () => {
+  it('gives six terms to each season, starting from 立春', () => {
+    expect(SOLAR_TERMS).toHaveLength(24);
+    expect(['立春', '谷雨', '立夏', '大暑', '立秋', '霜降', '立冬', '大寒'].map(seasonOfTerm)).toEqual([
+      'spring',
+      'spring',
+      'summer',
+      'summer',
+      'autumn',
+      'autumn',
+      'winter',
+      'winter',
+    ]);
+  });
+
+  it('falls back to winter for an unknown name', () => {
+    expect(seasonOfTerm('')).toBe('winter');
   });
 });

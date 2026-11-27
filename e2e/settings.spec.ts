@@ -13,9 +13,11 @@ async function signInFresh(page: Page, testInfo: TestInfo, name: string): Promis
   await signIn(page, username, PASSWORD);
 }
 
-async function gotoSettings(page: Page): Promise<void> {
-  await page.goto('/settings');
+/** 设置页上是几格器物，卡片都卷在挂轴里：带上卡片的 id（/settings#steam）直接展开那一卷 */
+async function gotoSettings(page: Page, at: string): Promise<void> {
+  await page.goto(`/settings#${at}`);
   await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+  await expect(page.locator('dialog[open]')).toHaveCount(1);
 }
 
 const card = (page: Page, title: string) => page.getByRole('region', { name: title });
@@ -32,9 +34,49 @@ test.describe('设置', () => {
     await expect(page.getByRole('link', { name: '登录', exact: true })).toHaveAttribute('href', '/login');
   });
 
+  test('设置页是几格器物：点一格展开那一卷，叉或 Esc 收起，地址上的 # 跟着变', async ({ page }, testInfo) => {
+    await signInFresh(page, testInfo, 'juan');
+    await page.goto('/settings');
+    await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(card(page, '搜索')).toBeHidden();
+
+    await page.getByRole('button', { name: /^首\s*页/ }).click();
+    const juan = page.getByRole('dialog', { name: '首页' });
+    await expect(juan).toBeVisible();
+    await expect(juan.getByRole('region', { name: '搜索' })).toBeVisible();
+    await expect(page).toHaveURL(/\/settings#home$/);
+    await page.keyboard.press('Escape');
+    await expect(juan).toBeHidden();
+    await expect(page).toHaveURL(/\/settings$/);
+
+    await page.getByRole('button', { name: /^游\s*艺/ }).click();
+    const play = page.getByRole('dialog', { name: '游艺' });
+    await expect(play.getByRole('region', { name: 'Steam' })).toBeVisible();
+    await play.getByRole('button', { name: '关闭' }).click();
+    await expect(play).toBeHidden();
+  });
+
+  test('设置页：鼠标点纸上的空白处回首页；点格子、点挂轴外面收起都不回', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', '手机上点空白不回首页');
+    await signInFresh(page, testInfo, 'blank');
+    await page.goto('/settings');
+    await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+
+    await page.getByRole('button', { name: /^游\s*艺/ }).click();
+    await expect(page.getByRole('dialog', { name: '游艺' })).toBeVisible();
+    await page.mouse.click(10, 300);
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await page.waitForTimeout(300);
+    await expect(page).toHaveURL(/\/settings$/);
+
+    await page.mouse.click(10, 300);
+    await expect(page).toHaveURL('/');
+  });
+
   test('换搜索引擎：首页搜索用的就是它；恢复默认后回到配置里的第一个', async ({ page, context }, testInfo) => {
     await signInFresh(page, testInfo, 'engine');
-    await gotoSettings(page);
+    await gotoSettings(page, 'search');
     const search = card(page, '搜索');
     await expect(search.getByRole('radio', { name: 'Google' })).toBeChecked();
     await search.getByRole('radio', { name: 'Yandex' }).check();
@@ -50,7 +92,7 @@ test.describe('设置', () => {
     await box.press('Enter');
     await expect(await tab).toHaveURL(/^https:\/\/yandex\.com\/search\/\?text=persist/);
 
-    await gotoSettings(page);
+    await gotoSettings(page, 'search');
     await search.getByRole('button', { name: '恢复默认' }).click();
     await expect(search.getByRole('status')).toHaveText('已恢复默认设置');
     await expect(search.getByRole('radio', { name: 'Google' })).toBeChecked();
@@ -71,7 +113,7 @@ test.describe('设置', () => {
       },
     );
     await signInFresh(page, testInfo, 'weather');
-    await gotoSettings(page);
+    await gotoSettings(page, 'weather');
     const weather = card(page, '天气地区');
     await expect(weather.getByText('测试城')).toBeVisible();
 
@@ -88,7 +130,7 @@ test.describe('设置', () => {
 
   test('写回 Google 日历：每个账号拿到自己的脚本，地址不对时说明原因', async ({ page }, testInfo) => {
     await signInFresh(page, testInfo, 'gsync');
-    await gotoSettings(page);
+    await gotoSettings(page, 'calendar-sync');
     const sync = page.locator('#calendar-sync');
     await sync.getByRole('button', { name: '开始连接' }).click();
     const script = sync.getByRole('textbox', { name: 'Apps Script 脚本' });
@@ -104,7 +146,7 @@ test.describe('设置', () => {
     await expect(page.locator('#calendar-sync').getByRole('textbox', { name: 'Apps Script 脚本' })).toHaveValue(mine);
     await page.context().clearCookies();
     await signInFresh(page, testInfo, 'gsync2');
-    await gotoSettings(page);
+    await gotoSettings(page, 'calendar-sync');
     await page.locator('#calendar-sync').getByRole('button', { name: '开始连接' }).click();
     await expect(page.locator('#calendar-sync').getByRole('textbox', { name: 'Apps Script 脚本' })).not.toHaveValue(mine);
   });
@@ -120,7 +162,7 @@ test.describe('设置', () => {
       },
     );
     await signInFresh(page, testInfo, 'ics');
-    await gotoSettings(page);
+    await gotoSettings(page, 'calendar');
     const calendar = card(page, '日历订阅');
     await expect(calendar.getByText('还没有订阅日历')).toBeVisible();
 
@@ -156,7 +198,7 @@ test.describe('设置', () => {
       (route: Route) => route.fulfill({ json: { success: true, data: { steamId: '76561197960265729' }, error: null } }),
     );
     await signInFresh(page, testInfo, 'steam');
-    await gotoSettings(page);
+    await gotoSettings(page, 'steam');
     const steam = card(page, 'Steam');
     await steam.getByRole('button', { name: '绑定账号' }).click();
     await steam.getByLabel('SteamID64 或个人资料链接').fill('76561197960265729');
@@ -173,7 +215,7 @@ test.describe('设置', () => {
 
   test('时钟：打开秒，首页的时间跟着带上秒；问候语没有了', async ({ page }, testInfo) => {
     await signInFresh(page, testInfo, 'clock');
-    await gotoSettings(page);
+    await gotoSettings(page, 'clock');
     const clock = card(page, '时钟');
     await expect(clock.getByLabel(/称呼/)).toHaveCount(0);
     await clock.getByRole('checkbox', { name: '显示秒' }).check();
@@ -187,7 +229,7 @@ test.describe('设置', () => {
 
   test('时钟：时间旁可以只留农历', async ({ page }, testInfo) => {
     await signInFresh(page, testInfo, 'dateline');
-    await gotoSettings(page);
+    await gotoSettings(page, 'clock');
     const clock = card(page, '时钟');
     await clock.getByRole('checkbox', { name: /^日期/ }).uncheck();
     await clock.getByRole('checkbox', { name: /^星期/ }).uncheck();
@@ -232,7 +274,7 @@ test.describe('设置', () => {
       route.fulfill({ json: { success: true, data: { icon: '/icons/github.svg' }, error: null } }),
     );
     await signInFresh(page, testInfo, 'links');
-    await gotoSettings(page);
+    await gotoSettings(page, 'links');
     const links = card(page, '导航');
     await expect(links.getByText('默认', { exact: true })).toBeVisible();
     await expect(links.getByRole('textbox', { name: '分类 1', exact: true })).toHaveValue('开发');
@@ -263,7 +305,7 @@ test.describe('设置', () => {
     await expect(page.getByRole('option', { name: /测试工具/ }).first()).toBeVisible();
 
     page.on('dialog', (dialog) => void dialog.accept());
-    await gotoSettings(page);
+    await gotoSettings(page, 'links');
     await links.getByRole('button', { name: '恢复默认' }).click();
     await expect(links.getByRole('status').last()).toHaveText('已恢复默认导航');
     await gotoHome(page);

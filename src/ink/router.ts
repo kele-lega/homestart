@@ -1,7 +1,9 @@
 import { isComposing } from '../lib/keyboard';
 import { formatClock } from '../widgets/clock/format';
+import { onBlankClick } from './blank-click';
 import { isForward, neighbor, routeOf, SUB_PAGES, titleOf, type InkRoute, type SubPage } from './pages';
-import { greeting, shichen } from './text';
+import { isNight } from './moon';
+import { greeting, shichen, shichenKe } from './text';
 
 /**
  * 留白的站内切换。/、/cal、/dir、/play、/site 服务端渲染的是同一份文档（只是 hidden 不同），
@@ -35,19 +37,19 @@ function show(next: InkRoute): void {
   dispatchEvent(new CustomEvent('ink:route', { detail: next }));
 }
 
-/* 印章：转场时让出发处和到达处的印章共用一个 view-transition-name，浏览器把它从一处搬到另一处 */
-function sealOf(side: 'home' | 'sub', page: SubPage): HTMLElement | null {
+/* 印章：转场时让首页入口的器物图标和子页页眉的印章共用一个 view-transition-name，浏览器把它从一处搬到另一处 */
+function sealOf(side: 'home' | 'sub', page: SubPage): Element | null {
   return side === 'home'
-    ? document.querySelector<HTMLElement>(`.ent[data-go="${page}"] .seal`)
-    : document.querySelector<HTMLElement>(`.ph [data-seal="${page}"]`);
+    ? document.querySelector(`.ent[data-go="${page}"] .qi`)
+    : document.querySelector(`.ph [data-seal="${page}"]`);
 }
 
-function nameSeal(node: HTMLElement | null): void {
+function nameSeal(node: Element | null): void {
   for (const named of document.querySelectorAll('.vts')) named.classList.remove('vts');
   node?.classList.add('vts');
 }
 
-function centerOf(node: HTMLElement | null): readonly [number, number] {
+function centerOf(node: Element | null): readonly [number, number] {
   if (!node) return [innerWidth / 2, innerHeight / 2];
   const box = node.getBoundingClientRect();
   return [box.left + box.width / 2, box.top + box.height / 2];
@@ -327,54 +329,8 @@ addEventListener(
   { passive: true },
 );
 
-/* ================= 子页：点空白处回首页 ================= */
-/*
- * 只认鼠标单击在「纯排版的空地」上：页面本身、分栏的格子之类自己不带字的容器。
- * 点到字、链接、按钮、输入框都不算；正在选字、刚关掉弹出的小纸、刚从输入框点出来（只是想让它失焦）也不算。
- * 手机上不做：手指点空白多半是想滚动或者点偏了
- */
-const LAYOUT_TAGS = /^(SECTION|DIV|MAIN|HEADER|FOOTER|NAV|ASIDE|UL|OL|DL)$/;
-const INTERACTIVE =
-  'a, button, input, textarea, select, label, summary, details, dialog, [role="button"], [role="tab"], [tabindex], [contenteditable], .pop';
-
-let pressedOnBlank = false;
-
-function hasOwnText(el: Element): boolean {
-  for (const child of el.childNodes) if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) return true;
-  return false;
-}
-
-function isBlank(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement) || !target.closest('.page[data-page]:not(.home)')) return false;
-  return LAYOUT_TAGS.test(target.tagName) && !hasOwnText(target) && !target.closest(INTERACTIVE);
-}
-
-document.addEventListener(
-  'pointerdown',
-  (event) => {
-    pressedOnBlank =
-      route !== 'home' &&
-      event.pointerType === 'mouse' &&
-      event.button === 0 &&
-      !event.ctrlKey &&
-      !event.metaKey &&
-      !event.shiftKey &&
-      !event.altKey &&
-      !typingIn(document.activeElement) &&
-      !dialogOpen() &&
-      !document.querySelector(':popover-open') &&
-      isBlank(event.target);
-  },
-  true,
-);
-
-document.addEventListener('click', (event) => {
-  const pressed = pressedOnBlank;
-  pressedOnBlank = false;
-  if (!pressed || event.defaultPrevented || event.detail !== 1 || !isBlank(event.target)) return;
-  if (!(getSelection()?.isCollapsed ?? true)) return;
-  go('home');
-});
+/* ================= 子页：点空白处回首页（规则见 blank-click.ts） ================= */
+onBlankClick({ within: '.page[data-page]:not(.home)', when: () => route !== 'home', then: () => go('home') });
 
 addEventListener('keyup', (event) => {
   if (event.key === 'Alt') root.classList.remove('keys');
@@ -415,10 +371,12 @@ for (const img of document.querySelectorAll<HTMLImageElement>('img.ico[data-n]')
   if (img.complete && img.naturalWidth === 0 && img.currentSrc) letterFor(img);
 }
 
-/* ================= 题款：时辰、问候 ================= */
+/* ================= 题款：时辰、刻、问候；入夜换月 ================= */
 const sealEl = document.querySelector<HTMLElement>('[data-shichen]');
 const greetEl = document.querySelector<HTMLElement>('[data-greeting]');
+const keEl = document.querySelector<HTMLElement>('[data-ke]');
 const clockLink = document.querySelector<HTMLElement>('.clock[data-clock]');
+const homeEl = document.querySelector<HTMLElement>('.page.home');
 const timeZone = shell?.dataset.timezone ?? 'Asia/Shanghai';
 let minuteTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -431,8 +389,11 @@ function tickHour(): void {
     sealEl.textContent = name;
     sealEl.setAttribute('aria-label', `现在是${name}`);
   }
+  const ke = shichenKe(hour, Number(minutes));
+  if (keEl && keEl.textContent?.trim() !== ke) keEl.textContent = ke;
   const hello = greeting(hour);
   if (greetEl && greetEl.textContent !== hello) greetEl.textContent = hello;
+  homeEl?.toggleAttribute('data-night', isNight(hour));
   clockLink?.setAttribute('aria-label', `${hours}:${minutes}，打开月令`);
   clearTimeout(minuteTimer);
   minuteTimer = setTimeout(tickHour, 60_000 - (now.getTime() % 60_000) + 50);

@@ -4,7 +4,7 @@ import { siteCounts } from '../adapters/site-stats';
 import { listSuggestions } from '../adapters/suggestions';
 import { ANONYMOUS, userFrom } from '../core/api';
 import { logBackgroundError } from '../core/log';
-import { cnDayInfo, currentTerm } from '../lib/cn-calendar';
+import { cnDayInfo, cnGanzhi, currentTerm, seasonOfTerm } from '../lib/cn-calendar';
 import { ZERO_COUNTS } from '../lib/site-stats';
 import { pendingCount } from '../lib/suggestions';
 import { localDateKey } from '../lib/zoned-time';
@@ -20,18 +20,24 @@ import InkLayout from './InkLayout.astro';
 import { inkInstances } from './instances';
 import type { PageConfig } from './load';
 import { PAGES, SUB_PAGES, titleOf, type InkRoute } from './pages';
-import { cnMonth, cnNumber, greeting, shichen } from './text';
+import { coupletPool } from './couplets';
+import { lianIndex } from './lian';
+import { isNight, moonPath } from './moon';
+import { cnMonth, cnNumber, greeting, shichen, shichenKe } from './text';
 import Deadlines from './islands/Deadlines.astro';
 import Weather from './islands/Weather.astro';
+import Qi from './parts/Qi.astro';
 import Icon from './parts/Icon.astro';
 import SubFrame from './parts/SubFrame.astro';
 import Tools from './parts/Tools.astro';
+import ThemeSwitch from '../zones/ThemeSwitch.astro';
 import InkAdmin from './components/InkAdmin.svelte';
 import InkCalendar from './components/InkCalendar.svelte';
 import InkSearch from './components/InkSearch.svelte';
 import InkSite from './components/InkSite.svelte';
 import InkSteam from './components/InkSteam.svelte';
 import './ink.css';
+import './scroll.css';
 
 /**
  * 留白：首页和四个子页（月令、目录、游艺、跋）。/、/cal、/dir、/play、/site 五个地址都渲染这同一份文档，
@@ -70,6 +76,15 @@ const clockOptions = instances.clock?.options;
 const showLunar = clockOptions?.lunar ?? true;
 const season = (clockOptions?.festival ?? true) ? (lunar.festival ?? (term.days === 0 ? term.name : `${term.name}后`)) : undefined;
 const weekday = clock.weekday.replace('周', '星期');
+// 干支跟着农历一起开关；远山、朝阳的颜色和题诗跟着节气
+const ganzhi = cnGanzhi(clock.year, clock.month, clock.day);
+const seasonName = seasonOfTerm(term.name);
+// 题诗：节气专属的一联加当季的一组，写在钟点下面，按钟点轮换，浏览器里每 30 秒换一联（lian.ts）
+const lianPool = coupletPool(term.name);
+const couplet = lianPool[lianIndex(lianPool.length, nowMs)];
+// 入夜后朱日换成月亮，圆缺按农历日；之后每分钟由 router.ts 判断一次入夜
+const night = isNight(hour);
+const moon = moonPath(lunar.lunarDayNumber);
 
 // 最近访问：登录用户按点击记录排（和旧版「常用网站」同一份数据），没记录时按配置里标了 favorite 的
 const links = config?.links.links ?? [];
@@ -127,6 +142,25 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
           <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3" />
           <feDisplacementMap in="SourceGraphic" scale="2.4" />
         </filter>
+        {/* 册页边框的角花：子母线在角上收成一个卷云，四角同一份，CSS 翻转。颜色用 style 写，<use> 里的元素选择器够不着，变量能继承进去 */}
+        <symbol id="mount-corner" viewBox="0 0 48 48">
+          <g fill="none" stroke-linecap="round">
+            <path d="M0.5 44.5 V12 A11.5 11.5 0 0 1 12 0.5 H44.5" style="stroke: var(--rule)" />
+            <path d="M5.5 44.5 V15 A9.5 9.5 0 0 1 15 5.5 H44.5" style="stroke: var(--rule)" />
+            <path d="M14 30 V20 A6 6 0 0 1 20 14 H30" style="stroke: var(--ink-3)" stroke-width="1.1" />
+            <path
+              d="M20 30 V22 A2 2 0 0 1 22 20 H26 A3 3 0 0 1 26 26 H24.5 A1.3 1.3 0 0 1 24.5 23.4"
+              style="stroke: var(--ink-3)"
+              stroke-width="1.1"
+            />
+          </g>
+          <circle cx="10.5" cy="10.5" r="1.6" style="fill: var(--cinnabar)" />
+        </symbol>
+        {/* 墨晕：最近访问的图标被指到时底下洇开的那团墨，用湍流把边扰毛 */}
+        <filter id="bleed" x="-30%" y="-30%" width="160%" height="160%">
+          <feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="3" seed="7" />
+          <feDisplacementMap in="SourceGraphic" scale="18" />
+        </filter>
       </svg>
 
       <div
@@ -135,23 +169,146 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
         data-timezone={timeZone}
         data-rendered-at={nowMs}
         data-site-title={site.title}
+        data-season={seasonName}
       >
         <Tools site={site} />
 
         {/* ================= 首页 ================= */}
-        <section class="page home" data-page="home" hidden={route !== 'home'} aria-label="首页">
-          <div class="orb" aria-hidden="true" />
-          <svg class="hills" viewBox="0 0 1600 340" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0 210 C120 150 200 170 300 120 S470 60 560 130 S760 190 860 110 S1060 30 1180 120 S1420 180 1600 100 V340 H0Z" />
-            <path d="M0 260 C150 220 240 250 360 200 S560 150 700 220 S940 270 1060 210 S1300 160 1420 230 S1560 250 1600 240 V340 H0Z" />
-            <path d="M0 300 C200 280 330 300 480 270 S760 250 900 290 S1160 310 1300 280 S1520 270 1600 290 V340 H0Z" />
+        <section
+          class="page home"
+          data-page="home"
+          data-night={night ? '' : undefined}
+          hidden={route !== 'home'}
+          aria-label="首页"
+        >
+          {/*
+            日：一团设色晕染，不是色块。边缘被纸纤维吃得不齐（ink-bleed 的位移），颜料在边上积得深一点（sun-fill 的渐变），
+            纸面有颗粒；再错开半笔叠一遍淡的，像积染了两次。颜色是节气的 --sun
+          */}
+          <svg class="orb" viewBox="-60 -60 120 120" aria-hidden="true">
+            <defs>
+              <filter id="ink-bleed" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="11" result="warp" />
+                <feDisplacementMap in="SourceGraphic" in2="warp" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="shape" />
+                <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="4" seed="4" result="grain" />
+                <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 1.5" result="grain-a" />
+                <feComposite in="shape" in2="grain-a" operator="in" />
+              </filter>
+              <filter id="halo-wash" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="8" result="warp" />
+                <feDisplacementMap in="SourceGraphic" in2="warp" scale="14" xChannelSelector="R" yChannelSelector="B" result="shape" />
+                <feGaussianBlur in="shape" stdDeviation="2.2" />
+              </filter>
+              <filter id="cloud-wash" x="-20%" y="-150%" width="140%" height="400%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.03 0.14" numOctaves="3" seed="21" result="warp" />
+                <feDisplacementMap in="SourceGraphic" in2="warp" scale="6" xChannelSelector="R" yChannelSelector="G" result="shape" />
+                <feGaussianBlur in="shape" stdDeviation="2.6 1.6" />
+              </filter>
+              <filter id="moon-bleed" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="11" result="warp" />
+                <feDisplacementMap in="SourceGraphic" in2="warp" scale="2" xChannelSelector="R" yChannelSelector="G" result="shape" />
+                <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" seed="9" result="grain" />
+                <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.3 1.15" result="grain-a" />
+                <feComposite in="shape" in2="grain-a" operator="in" />
+              </filter>
+              <filter id="mare-wash" x="-30%" y="-30%" width="160%" height="160%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="3" seed="5" result="warp" />
+                <feDisplacementMap in="SourceGraphic" in2="warp" scale="9" xChannelSelector="R" yChannelSelector="G" result="shape" />
+                <feGaussianBlur in="shape" stdDeviation="3.2" />
+              </filter>
+              <radialGradient id="sun-fill">
+                <stop offset="0" class="sun-stop" stop-opacity=".62" />
+                <stop offset=".72" class="sun-stop" stop-opacity=".8" />
+                <stop offset=".94" class="sun-stop" stop-opacity="1" />
+                <stop offset="1" class="sun-stop" stop-opacity=".7" />
+              </radialGradient>
+            </defs>
+            <circle r="50" fill="url(#sun-fill)" filter="url(#ink-bleed)" />
+            <circle class="again" cx="1.6" cy="-1.2" r="46.5" fill="url(#sun-fill)" filter="url(#ink-bleed)" />
+          </svg>
+          {/*
+            月：入夜（data-night）才显出来，朱日同时隐去。浅色是「烘云托月」——月亮留白，四周一圈淡淡的烘染托出来；
+            深色是暗纸上一轮淡米色。亮面按农历日的圆缺（moon.ts），里面几块月海，暗面一层淡墨（地照），一缕薄云慢慢飘过
+          */}
+          <svg class="moon" viewBox="-60 -60 120 120" aria-hidden="true">
+            <defs>
+              <radialGradient id="moon-halo" r=".5">
+                <stop offset=".6" class="halo-stop" stop-opacity="0" />
+                <stop offset=".645" class="halo-stop" stop-opacity="1" />
+                <stop offset=".75" class="halo-stop" stop-opacity=".45" />
+                <stop offset="1" class="halo-stop" stop-opacity="0" />
+              </radialGradient>
+              <radialGradient id="moon-fill" cx=".42" cy=".4" r=".62">
+                <stop offset="0" class="moon-stop" stop-opacity="1" />
+                <stop offset=".8" class="moon-stop" stop-opacity=".9" />
+                <stop offset="1" class="moon-stop" stop-opacity=".84" />
+              </radialGradient>
+              <clipPath id="moon-lit"><path d={moon} /></clipPath>
+            </defs>
+            <circle class="glow" r="78" fill="url(#moon-halo)" filter="url(#halo-wash)" />
+            <circle class="dark" r="50" filter="url(#moon-bleed)" />
+            <path class="lit" d={moon} fill="url(#moon-fill)" filter="url(#moon-bleed)" />
+            <g clip-path="url(#moon-lit)">
+              {/* 月海大致照着正面的样子摆：上半和左边暗（风暴洋、雨海、澄海、静海…），南边高地亮 */}
+              <g class="mare" filter="url(#mare-wash)">
+                <ellipse cx="-28" cy="-2" rx="12" ry="22" transform="rotate(10 -28 -2)" />
+                <ellipse cx="-14" cy="-22" rx="13" ry="10" transform="rotate(-15 -14 -22)" />
+                <ellipse cx="7" cy="-21" rx="8" ry="7" />
+                <ellipse cx="-3" cy="-9" rx="7" ry="4.5" />
+                <ellipse cx="14" cy="-5" rx="10" ry="8" />
+                <ellipse cx="32" cy="-12" rx="5" ry="6" />
+                <ellipse cx="28" cy="8" rx="4.5" ry="8" transform="rotate(-10 28 8)" />
+                <ellipse cx="17" cy="13" rx="4" ry="4" />
+                <ellipse cx="-12" cy="16" rx="9" ry="5.5" />
+                <ellipse cx="-29" cy="21" rx="5" ry="5" />
+              </g>
+            </g>
+            <g class="cloud" filter="url(#cloud-wash)">
+              <path d="M-80 20 C-60 15 -38 16 -16 14 C6 12 28 9 50 11 C64 12 76 14 86 14 C70 18 50 19 28 20 C4 21 -22 22 -46 22 C-62 22 -72 22 -80 20 Z" />
+              <path d="M-46 33 C-30 30 -12 30 6 29 C20 28 34 29 46 30 C32 33 16 34 -2 34.5 C-18 35 -34 35 -46 33 Z" />
+            </g>
+          </svg>
+          {/*
+            水墨画的两样：远山、竹影。原图是白底水墨（design-lab/ink-src/），
+            scripts/ink-mask.py 转成只有透明度的遮罩放在 public/ink/；这里用 CSS mask 挂上去、填主题色（ink.css）
+          */}
+          <div class="shan" aria-hidden="true" />
+
+          {/* 册页边框：四边各一道子母线，离角一截断开，接上角花 */}
+          <div class="mount" aria-hidden="true">
+            <i class="mt" />
+            <i class="mb" />
+            <i class="ml" />
+            <i class="mr" />
+            {['tl', 'tr', 'bl', 'br'].map((corner) => (
+              <svg class={`mc ${corner}`} viewBox="0 0 48 48">
+                <use href="#mount-corner" />
+              </svg>
+            ))}
+          </div>
+
+          <div class="zhu" aria-hidden="true" />
+
+          {/* 雁阵：七笔「︿」排成人字，后面一只掉队的，很慢地从远山上空飞过 */}
+          <svg class="yan" viewBox="0 0 200 80" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M0 34 Q5 28 10 33 Q15 27 22 30" stroke-width="1.7" />
+              <path d="M26 22 Q30 17 35 21 Q39 16 45 19" stroke-width="1.5" />
+              <path d="M52 12 Q56 8 60 11 Q64 7 69 9" stroke-width="1.3" />
+              <path d="M28 46 Q32 41 37 45 Q41 40 47 43" stroke-width="1.5" />
+              <path d="M56 56 Q60 52 64 55 Q68 51 73 53" stroke-width="1.3" />
+              <path d="M84 64 Q87 61 90 63 Q93 60 97 62" stroke-width="1.1" />
+              <path d="M150 40 Q153 37 156 39 Q159 36 163 38" stroke-width="1" opacity=".7" />
+            </g>
           </svg>
 
           <aside class="ddl" aria-label="期限">
             {instances.deadline && (
               <>
                 <span class="ddl-h" aria-hidden="true">期 限</span>
-                <Deadlines server:defer id={instances.deadline.id} variant="strips" />
+                <div class="ddl-row">
+                  <Deadlines server:defer id={instances.deadline.id} variant="strips" />
+                </div>
               </>
             )}
           </aside>
@@ -274,6 +431,12 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
             >
               <span data-part="hours">{clock.hours}</span><i aria-hidden="true">:</i><span data-part="minutes">{clock.minutes}</span>
             </a>
+            {couplet && (
+              <p class="lian" aria-hidden="true" title={couplet.source} data-lian={JSON.stringify(lianPool.map((p) => [p.first, p.second, p.source]))}>
+                <span>{couplet.first}</span>
+                <span>{couplet.second}</span>
+              </p>
+            )}
             <p class="vt">
               <span class="big">
                 {cnMonth(clock.month)}
@@ -283,6 +446,7 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
                 <b>{weekday}</b>
                 {showLunar && `　农历${lunar.lunarMonth}${lunar.lunarDay}`}
               </span>
+              {showLunar && <span class="gz">{`${ganzhi.year}年　${ganzhi.month}月　${ganzhi.day}日`}</span>}
               <span>
                 {season && `${season}　`}
                 <span data-greeting>{greeting(hour)}</span>
@@ -301,19 +465,25 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
             <span class="seal" data-shichen aria-label={`现在是${shichen(hour)}`}>
               {shichen(hour)}
             </span>
+            <span class="ke" data-ke>
+              {shichenKe(hour, Number(clock.minutes))}
+            </span>
           </aside>
 
           <nav class="ents" aria-label="页面">
             {SUB_PAGES.map((name) => (
               <a class="ent" href={`/${name}`} data-go={name}>
-                <span class="seal" data-seal={name} aria-hidden="true">
-                  {PAGES[name].seal}
-                </span>
+                <Qi name={name} />
                 <b>{PAGES[name].name}</b>
                 <small data-hint={name}>{HINTS[name]}</small>
               </a>
             ))}
           </nav>
+
+          {/* 明暗：首页右下角，跟随系统 / 浅 / 深 */}
+          <div class="hue">
+            <ThemeSwitch />
+          </div>
         </section>
 
         {/* ================= 月令 ================= */}
@@ -383,15 +553,15 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
         <SubFrame page="site" route={route}>
           <div class="sitep">
             <InkSite client:load counts={counts} signedIn={signedIn} />
-            {admin ? (
-              <InkAdmin client:idle pending={pending} entries={instances.server?.options.entries ?? []} timeZone={timeZone} />
-            ) : (
+            {/* 第三栏：管理员先是管理，下面接小记（快捷键）；别人只有小记 */}
+            <div class="side">
+              {admin && <InkAdmin client:idle pending={pending} entries={instances.server?.options.entries ?? []} timeZone={timeZone} />}
               <div class="blk">
                 <h2 class="blk-h">小 记</h2>
                 <p class="keys-tip">
                   <kbd>/</kbd> 或直接打字即搜索
                   <br />
-                  <kbd>1</kbd>–<kbd>8</kbd> 打开最近访问
+                  <kbd>1</kbd>–<kbd>8</kbd> 打开最近访问（按住 <kbd>Alt</kbd> 看编号）
                   <br />
                   <kbd>←</kbd>
                   <kbd>→</kbd> 首页换分类，子页翻页
@@ -401,7 +571,7 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
                   <kbd>Esc</kbd> 或点子页的空白处回首页
                 </p>
               </div>
-            )}
+            </div>
           </div>
         </SubFrame>
 
@@ -410,10 +580,13 @@ const title = site ? titleOf(route, site.title) : FALLBACK_SITE.title;
 
       <script>
         import './router';
+        import { initLian } from './lian';
         import '../client/day-rollover';
         import '../client/settings-sync';
         import '../widgets/favorites/track';
         import '../widgets/clock/clock';
+
+        initLian();
       </script>
     </InkLayout>
   )

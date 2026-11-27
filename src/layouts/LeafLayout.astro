@@ -7,6 +7,7 @@ import SettingsLink from '../zones/SettingsLink.astro';
 import ThemeSwitch from '../zones/ThemeSwitch.astro';
 import '../styles/leaf.css';
 import '../ink/leaf.css';
+import '../ink/scroll.css';
 
 /**
  * 首页以外的几页（登录、注册、找回密码、个人中心、设置）：同一张宣纸，左上角「归 首页」，右上角明暗和设置，
@@ -18,16 +19,18 @@ interface Props {
   readonly heading: string;
   /** 纸上内容的宽度：登录只要一张窄卡片，个人中心宽一些 */
   readonly width?: 'narrow' | 'wide';
+  /** 鼠标点纸上的空白处回首页（设置、个人中心；登录这类填表的页不要，点偏了会丢掉填了一半的东西） */
+  readonly blankHome?: boolean;
 }
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
-const { site, heading, width = 'narrow' } = Astro.props;
+const { site, heading, width = 'narrow', blankHome = false } = Astro.props;
 const today = localDateKey(Date.now(), site.timezone);
 const [, month = 1, day = 1] = today.split('-').map(Number);
 ---
 
 <InkLayout site={site} title={`${heading} · ${site.title}`}>
-  <div class="leaf" data-width={width}>
+  <div class="leaf" data-width={width} data-blank-home={blankHome ? '' : undefined}>
     <nav class="leaf-bar" aria-label="页面">
       <a class="leaf-back" href="/"><b aria-hidden="true">归</b>首页</a>
       <span class="leaf-tools">
@@ -46,3 +49,7 @@ const [, month = 1, day = 1] = today.split('-').map(Number);
     </main>
   </div>
 </InkLayout>
+
+<script>
+  import '../ink/leaf-blank';
+</script>

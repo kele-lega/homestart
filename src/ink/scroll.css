@@ -1,0 +1,517 @@
+/*
+ * 挂轴：留白皮肤里首页的告示（PaperDialog，data-kind="notice"）和设置页的各卷（data-kind="juan"，SettingsSheet）都画成一幅挂轴。
+ * 首页（InkPage）和设置页（LeafLayout）都引入这一份。
+ * 上下两根木轴（public/ink/scroll-rod.webp，抠了底、留原色），上轴挂一根绳；中间是左右毛边的宣纸，
+ * 毛边是两条能竖着平铺的遮罩（notice-edge-l/-r），纸纹是一张淡灰的四方连续（paper-grain）。都由 scripts/ink-mask.py 从 design-lab/ink-src/ 转出来。
+ * 打开时下轴从上轴那里往下滚，纸跟着展开；关上只淡出。
+ * 纸本身是滚动的那层，左右各留一条透明的边框给毛边。浏览器的滚动条藏起来，换成右边垂下的丝绦（见「拉条」）
+ */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) {
+  --w: min(32rem, calc(100vw - 4rem));
+  --rod: calc((var(--w) + 2.4rem) * 98 / 1200);
+  --grain: url('/ink/paper-grain.webp') 0 0 / 256px;
+  /* 挂绳、丝绦的颜色，和上轴的绳一样 */
+  --cord: light-dark(#806a56, #8a7663);
+
+  inline-size: var(--w);
+  filter: drop-shadow(0 22px 26px rgb(48 36 24 / 0.16));
+}
+
+html[data-skin='ink'][data-theme='dark'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) {
+  filter: drop-shadow(0 22px 30px rgb(0 0 0 / 0.5));
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[open] {
+  animation: notice-in 0.32s ease-out;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[open][data-closing] {
+  animation: notice-out 0.22s ease-in forwards;
+}
+
+/* 后面不压暗，是一层薄雾 */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::backdrop {
+  background: rgb(244 241 234 / 0.6);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+html[data-skin='ink'][data-theme='dark'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::backdrop {
+  background: rgb(10 12 15 / 0.62);
+}
+
+/* 两根轴。上轴连着绳：图在盒子底下，上面一截是绳和钉子 */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::before,
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::after {
+  position: absolute;
+  inset-inline: -1.2rem;
+  z-index: 2;
+  content: '';
+  pointer-events: none;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::before {
+  inset-block-end: calc(100% - var(--rod) / 2);
+  block-size: calc(var(--rod) + 2.6rem);
+  background:
+    url('/ink/scroll-rod.webp') center bottom / 100% var(--rod) no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M14 40 L50 4 L86 40' fill='none' stroke='%23806a56' stroke-width='1.3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center top / 70% calc(100% - var(--rod) * 0.4) no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::after {
+  inset-block-start: calc(100% - var(--rod) / 2);
+  block-size: var(--rod);
+  background: url('/ink/scroll-rod.webp') center / 100% 100% no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[open]::after {
+  animation: notice-roll 0.62s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+html[data-skin='ink'][data-theme='dark'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::before,
+html[data-skin='ink'][data-theme='dark'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::after {
+  filter: brightness(0.82);
+}
+
+/* 跟随系统的深色（没有 data-theme）：雾、影子、木轴和上面三处一样 */
+@media (prefers-color-scheme: dark) {
+  html[data-skin='ink']:not([data-theme='light']) .paper-dialog:is([data-kind='notice'], [data-kind='juan']) {
+    filter: drop-shadow(0 22px 30px rgb(0 0 0 / 0.5));
+  }
+
+  html[data-skin='ink']:not([data-theme='light']) .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::backdrop {
+    background: rgb(10 12 15 / 0.62);
+  }
+
+  html[data-skin='ink']:not([data-theme='light']) .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::before,
+  html[data-skin='ink']:not([data-theme='light']) .paper-dialog:is([data-kind='notice'], [data-kind='juan'])::after {
+    filter: brightness(0.82);
+  }
+}
+
+/* 纸：底色加纸纹，左右毛边，中间一整块 */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .paper {
+  max-block-size: min(40rem, calc(100dvh - 9rem));
+  background: var(--grain), var(--surface);
+  border: 0;
+  border-inline: 1.2rem solid transparent;
+  box-shadow: none;
+  -webkit-mask:
+    url('/ink/notice-edge-l.webp') left top / 2rem auto repeat-y,
+    url('/ink/notice-edge-r.webp') right top / 2rem auto repeat-y,
+    linear-gradient(#000 0 0) center / calc(100% - 3.6rem) 100% no-repeat;
+  mask:
+    url('/ink/notice-edge-l.webp') left top / 2rem auto repeat-y,
+    url('/ink/notice-edge-r.webp') right top / 2rem auto repeat-y,
+    linear-gradient(#000 0 0) center / calc(100% - 3.6rem) 100% no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[open] .paper {
+  animation: notice-unroll 0.62s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+/* 标题：「告　示」两个大字居中，底下一道如意界线；关闭在右，管理员的「写一条」在左 */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .head {
+  justify-content: center;
+  padding: calc(var(--rod) / 2 + 1.4rem) 3rem 1.6rem;
+  background: var(--grain), var(--surface);
+  border: 0;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .head::before,
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .head::after {
+  position: absolute;
+  inset-block-end: 0.3rem;
+  inset-inline-start: 50%;
+  block-size: 14px;
+  content: '';
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .head::before {
+  inline-size: 70%;
+  background:
+    linear-gradient(to right, transparent, var(--ink-4)) left center / calc(50% - 1.3rem) 1px no-repeat,
+    linear-gradient(to left, transparent, var(--ink-4)) right center / calc(50% - 1.3rem) 1px no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .head::after {
+  inline-size: 28px;
+  background: var(--cinnabar);
+  -webkit-mask: var(--ruyi) center / contain no-repeat;
+  mask: var(--ruyi) center / contain no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .title {
+  flex: none;
+  margin-inline-end: -0.8em;
+  font: 400 2.1rem / 1.2 var(--brush);
+  letter-spacing: 0.8em;
+  color: var(--ink);
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .close {
+  position: absolute;
+  inset-block-start: calc(var(--rod) / 2 + 1rem);
+  inset-inline-end: 0.4rem;
+  color: var(--ink-3);
+  background: none;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .head > .text-btn {
+  position: absolute;
+  inset-block-start: calc(var(--rod) / 2 + 1.3rem);
+  inset-inline-start: 0.9rem;
+  font-family: var(--brush);
+  font-size: 1.05rem;
+  letter-spacing: 0.15em;
+  color: var(--cinnabar);
+}
+
+@media (hover: hover) {
+  html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .close:hover {
+    color: var(--cinnabar);
+    background: none;
+  }
+}
+
+/*
+ * 拉条：浏览器的滚动条藏起来，换成右边轴头垂下的一根丝绦，上面穿一颗朱砂坠子。
+ * 坠子的长短是看得见的那部分占全文的比例，位置是滚到哪；可以拖，点丝绦别处跳过去。
+ * --view、--at、data-overflow 由 PaperDialog 算好写在 dialog 上；内容不超出时整根不出来
+ */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .paper {
+  scrollbar-width: none;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .paper::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .cord {
+  position: absolute;
+  inset-block: calc(var(--rod) * 0.55);
+  inset-inline-end: -1.1rem;
+  z-index: 1;
+  display: block;
+  inline-size: 1rem;
+  visibility: hidden;
+  cursor: pointer;
+  opacity: 0;
+  touch-action: none;
+  transition:
+    opacity 0.3s,
+    visibility 0.3s;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[data-overflow] .cord {
+  visibility: visible;
+  opacity: 1;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[open] .cord {
+  animation: notice-unroll 0.62s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+/* 丝绦：一根细线，两头隐进轴里 */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .cord::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  inline-size: 1px;
+  content: '';
+  background: linear-gradient(to bottom, transparent, var(--cord) 1.4rem, var(--cord) calc(100% - 1.4rem), transparent);
+  translate: -50% 0;
+}
+
+/* 坠子：长圆的朱砂，上头一颗结、下头一小撮穗子 */
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .bead {
+  --len: clamp(2.4rem, calc(var(--view, 1) * 100%), 8rem);
+
+  position: absolute;
+  inset-block-start: calc((100% - var(--len)) * var(--at, 0));
+  inset-inline-start: 50%;
+  inline-size: 5px;
+  block-size: var(--len);
+  cursor: grab;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--cinnabar) 70%, #000),
+    color-mix(in srgb, var(--cinnabar) 82%, #fff) 45%,
+    var(--cinnabar) 60%,
+    color-mix(in srgb, var(--cinnabar) 70%, #000)
+  );
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgb(40 20 10 / 0.25);
+  translate: -50% 0;
+  transition: inline-size 0.2s;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .bead::before,
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .bead::after {
+  position: absolute;
+  inset-inline-start: 50%;
+  content: '';
+  translate: -50% 0;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .bead::before {
+  inset-block-start: -7px;
+  inline-size: 7px;
+  block-size: 7px;
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--cinnabar) 70%, #fff), var(--cinnabar) 55%, color-mix(in srgb, var(--cinnabar) 65%, #000));
+  border-radius: 50%;
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .bead::after {
+  inset-block-start: calc(100% + 1px);
+  inline-size: 7px;
+  block-size: 0.8rem;
+  background: repeating-linear-gradient(to right, var(--cinnabar) 0 1px, transparent 1px 2px);
+  -webkit-mask: linear-gradient(#000, transparent);
+  mask: linear-gradient(#000, transparent);
+}
+
+@media (hover: hover) {
+  html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan']) .cord:hover .bead {
+    inline-size: 7px;
+  }
+}
+
+html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[data-dragging] .bead {
+  inline-size: 7px;
+  cursor: grabbing;
+}
+
+/*
+ * 设置、个人中心的各卷：后面和告示一样起一层薄雾。
+ * 卷的宽窄跟着内容：导航要排一列列网站、登录设备和账号管理是表格，宽一些
+ */
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] {
+  --w: min(34rem, calc(100vw - 4rem));
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan']:has(.links-card, #sessions, #users) {
+  --w: min(46rem, calc(100vw - 4rem));
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .paper {
+  max-block-size: min(46rem, calc(100dvh - 9rem));
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .juan {
+  display: grid;
+  padding: 0.6rem 1.8rem calc(var(--rod) / 2 + 2rem);
+}
+
+/* 一卷里的几项之间是如意界线；每项的标题小一号 */
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .leaf-card + .leaf-card {
+  position: relative;
+  margin-block-start: 1.4rem;
+  padding-block-start: 2.2rem;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .leaf-card + .leaf-card::before,
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .leaf-card + .leaf-card::after {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  block-size: 12px;
+  content: '';
+  transform: translate(-50%, -50%);
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .leaf-card + .leaf-card::before {
+  inline-size: 60%;
+  background:
+    linear-gradient(to right, transparent, var(--rule)) left center / calc(50% - 1.1rem) 1px no-repeat,
+    linear-gradient(to left, transparent, var(--rule)) right center / calc(50% - 1.1rem) 1px no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .leaf-card + .leaf-card::after {
+  inline-size: 22px;
+  background: var(--ink-4);
+  -webkit-mask: var(--ruyi) center / contain no-repeat;
+  mask: var(--ruyi) center / contain no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .leaf-card-head {
+  border: 0;
+  padding: 0;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .leaf-card-title {
+  font-size: 1.45rem;
+}
+
+/* 一条一条：之间也是一道如意界线，标题用毛笔字 */
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .list {
+  padding-inline: 1.8rem;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .item {
+  padding-block: 1.2rem;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .item + .item {
+  position: relative;
+  padding-block-start: 2rem;
+  border: 0;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .item + .item::before,
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .item + .item::after {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  block-size: 12px;
+  content: '';
+  transform: translate(-50%, -50%);
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .item + .item::before {
+  inline-size: 60%;
+  background:
+    linear-gradient(to right, transparent, var(--rule)) left center / calc(50% - 1.1rem) 1px no-repeat,
+    linear-gradient(to left, transparent, var(--rule)) right center / calc(50% - 1.1rem) 1px no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .item + .item::after {
+  inline-size: 22px;
+  background: var(--ink-4);
+  -webkit-mask: var(--ruyi) center / contain no-repeat;
+  mask: var(--ruyi) center / contain no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .meta {
+  letter-spacing: 0.08em;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .item-title {
+  font: 400 1.45rem / 1.4 var(--brush);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .body {
+  line-height: 1.9;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .text-btn {
+  color: var(--ink-3);
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .text-btn[data-kind='danger'] {
+  color: var(--cinnabar);
+}
+
+/* 末尾盖一方「此布」；空着的时候不盖 */
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .paper::after {
+  flex: none;
+  align-self: flex-end;
+  display: grid;
+  place-items: center;
+  inline-size: 2.3rem;
+  block-size: 2.3rem;
+  margin: 0.4rem 1.8rem calc(var(--rod) / 2 + 1.4rem) 0;
+  font: 400 0.95rem / 1 var(--brush);
+  letter-spacing: -0.05em;
+  color: var(--cinnabar-ink);
+  writing-mode: vertical-rl;
+  content: '此布';
+  background: var(--cinnabar);
+  border-radius: 3px;
+  opacity: 0.9;
+  -webkit-mask: var(--stamp) center / 100% 100% no-repeat;
+  mask: var(--stamp) center / 100% 100% no-repeat;
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .paper:has(> .empty)::after {
+  display: none;
+}
+
+/* 还没有告示：檐角、风铃、一枝梅（notice-empty.webp），底下一行小字 */
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .empty {
+  margin: 0 2rem calc(var(--rod) / 2 + 2rem);
+  font: 400 1.15rem / 1.6 var(--brush);
+  letter-spacing: 0.3em;
+  color: var(--ink-3);
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .empty::before {
+  display: block;
+  inline-size: min(17rem, 80%);
+  aspect-ratio: 1;
+  margin: -0.4rem auto 0.4rem;
+  content: '';
+  background-color: var(--ink);
+  opacity: 0.72;
+  /* 原图的檐角顶到右边裁齐了，右边一截淡出去 */
+  -webkit-mask:
+    url('/ink/notice-empty.webp') center / contain no-repeat,
+    linear-gradient(to left, transparent, #000 16%);
+  -webkit-mask-composite: source-in;
+  mask:
+    url('/ink/notice-empty.webp') center / contain no-repeat,
+    linear-gradient(to left, transparent, #000 16%);
+  mask-composite: intersect;
+}
+
+/* 写一条：下划线聚焦时是朱砂 */
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .compose {
+  margin-inline: 1.8rem;
+  border-color: var(--rule);
+}
+
+html[data-skin='ink'] .paper-dialog[data-kind='notice'] .field::after {
+  background: var(--cinnabar);
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes notice-out {
+  to {
+    opacity: 0;
+    translate: 0 -0.5rem;
+  }
+}
+
+@keyframes notice-roll {
+  from {
+    inset-block-start: calc(var(--rod) / -2);
+  }
+}
+
+/* 两头都要写成 inset()：从 inset() 到默认的 none 不能补间，会在半程一下子整张露出来，跑到下轴前面去 */
+@keyframes notice-unroll {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+/* 全局的减少动态只管 .ink 里的元素，伪元素和顶层的纸这里自己停 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[open]::after,
+  html[data-skin='ink'] .paper-dialog:is([data-kind='notice'], [data-kind='juan'])[open] :is(.paper, .cord) {
+    animation: none;
+  }
+}
+
+/* 导航这一卷只有一张卡片，卡片标题和轴上的「导航」重了：只留给读屏 */
+html[data-skin='ink'] .paper-dialog[data-kind='juan'] .links-card .leaf-card-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

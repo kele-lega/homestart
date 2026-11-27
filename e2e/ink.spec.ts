@@ -32,20 +32,19 @@ test.describe('留白：权限', () => {
     expect((await page.request.get('/api/server/stats')).status()).toBe(403);
   });
 
-  test('普通用户：账号小纸有个人中心的入口，没有账号管理；跋页没有管理块', async ({ page }, testInfo) => {
+  test('普通用户：名字直接进个人中心，没有管理一格；跋页没有管理块', async ({ page }, testInfo) => {
     const username = `ink-user-${testInfo.project.name}`;
     await createUser(page.request, username);
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
     await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
 
-    await page.getByRole('button', { name: `账号（${username}）` }).click();
-    const me = page.locator('#ink-me');
-    await expect(me).toBeVisible();
-    await expect(me.getByRole('link', { name: '个人资料' })).toHaveAttribute('href', '/account#profile');
-    await expect(me.getByRole('link', { name: '登录设备' })).toHaveAttribute('href', '/account#sessions');
-    await expect(me).toContainText('1 台');
     await expectNoAdminTraces(page);
+    await page.getByRole('link', { name: `个人中心（${username}）` }).click();
+    await expect(page).toHaveURL('/account');
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^设备/ })).toContainText('1 处登录着');
+    await expect(page.getByRole('button', { name: /^管理/ })).toHaveCount(0);
 
     await gotoInk(page, '/site');
     await expect(page.getByRole('heading', { name: '留 言' })).toBeVisible();
@@ -54,15 +53,14 @@ test.describe('留白：权限', () => {
     expect((await page.request.get('/api/server/stats')).status()).toBe(403);
   });
 
-  test('管理员：多出账号管理和「管理员」印；跋页有管理块和服务器', async ({ page }) => {
+  test('管理员：个人中心多出管理一格和「管理员」印；跋页有管理块和服务器', async ({ page }) => {
     await signIn(page, E2E_ADMIN.username, E2E_ADMIN.password);
     await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
 
-    await page.getByRole('button', { name: `账号（${E2E_ADMIN.username}）` }).click();
-    const me = page.locator('#ink-me');
-    await expect(me.getByText('管理员')).toBeVisible();
-    await expect(me.getByRole('link', { name: '账号管理' })).toHaveAttribute('href', '/account#users');
-    await page.keyboard.press('Escape');
+    await page.getByRole('link', { name: `个人中心（${E2E_ADMIN.username}）` }).click();
+    await expect(page).toHaveURL('/account');
+    await expect(page.getByText('管理员', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^管理/ })).toBeVisible();
 
     await gotoInk(page, '/site');
     await expect(page.getByRole('heading', { name: '管 理' })).toBeVisible();
@@ -139,21 +137,39 @@ test.describe('留白：页面', () => {
     await expect(page.locator('.page.home')).toBeVisible();
   });
 
-  test('期限条幅是竖长条：再多也不把首页挤歪', async ({ page }) => {
-    // 测试账号没有日历订阅，照服务端的样子塞几条进去
+  test('期限条幅：问和常用一直在正中，放不下的整条不出，悬停的日期不被旁边的条幅挡住', async ({ page }, testInfo) => {
+    const centerOf = async () => {
+      const box = (await page.locator('.ask').boundingBox())!;
+      return box.x + box.width / 2;
+    };
     await gotoInk(page);
+    const before = await centerOf();
+    // 测试账号没有日历订阅，照服务端的样子塞几条进去（多到左边一栏放不下）
     await page.locator('.ddl').evaluate((ddl) => {
       const strip = (title: string, days: number, len: number) =>
         `<a class="strip" href="/cal" data-hot style="--len:${len}"><span class="t">${title}</span>` +
-        `<span class="d"><span class="n">${days}</span>日</span><span class="note">12.10</span></a>`;
-      ddl.innerHTML = strip('订阅到期', 13, 15.5) + strip('云服务器到期', 15, 16.3) + strip('还款', 25, 20.5);
+        `<span class="d"><span class="n">${days}</span>日</span><span class="note">12月10日</span></a>`;
+      ddl.innerHTML = `<div class="ddl-row">${Array.from({ length: 12 }, (_, i) => strip(`事项${i + 1}`, 13 + i, 15.5 + i)).join('')}</div>`;
     });
-    for (const box of await page.locator('.strip').evaluateAll((strips) => strips.map((s) => s.getBoundingClientRect().toJSON()))) {
+    const strips = page.locator('.strip:visible');
+    const boxes = await strips.evaluateAll((list) => list.map((s) => s.getBoundingClientRect().toJSON() as DOMRect));
+    expect(boxes.length).toBeGreaterThan(0);
+    expect(boxes.length).toBeLessThan(12);
+    const column = (await page.locator('.ddl').boundingBox())!;
+    for (const box of boxes) {
       expect(box.height).toBeGreaterThan(box.width * 2.5);
-      expect(box.width).toBeLessThan(80);
+      expect(box.right).toBeLessThanOrEqual(column.x + column.width + 0.5);
     }
-    const search = await page.locator('#ink-q').boundingBox();
-    expect(search!.width).toBeGreaterThan(200);
+    expect(Math.abs((await centerOf()) - before)).toBeLessThan(1);
+    if (testInfo.project.name !== 'mobile') expect(Math.abs(before - page.viewportSize()!.width / 2)).toBeLessThan(2);
+
+    if (boxes.length > 1) {
+      await strips.first().hover();
+      const note = (await strips.first().locator('.note').boundingBox())!;
+      const next = boxes[1]!;
+      const overlaps = note.x < next.right && note.x + note.width > next.left && note.y < next.bottom && note.y + note.height > next.top;
+      expect(overlaps).toBe(false);
+    }
   });
 
   test('分类：点一个换一组网站，刷新后还记得', async ({ page }) => {

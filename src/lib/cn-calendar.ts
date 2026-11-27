@@ -20,6 +20,8 @@ export interface CnDayInfo {
   readonly lunarMonth: string;
   /** 农历日名：初一…三十 */
   readonly lunarDay: string;
+  /** 农历日的数字 1…30，首页按它画月相 */
+  readonly lunarDayNumber: number;
   /** 节气，只在交节当天有值 */
   readonly term: string | undefined;
   /** 节日的显示名（见 FESTIVAL_NAMES）；农历、公历节日同一天时取农历 */
@@ -81,7 +83,17 @@ export function cnDayInfo(year: number, month: number, day: number): CnDayInfo {
         ? [lunarMonth, 'month']
         : [lunarDay, 'day'];
 
-  return { lunarMonth, lunarDay, term, festival, holiday, label, labelKind, marked: festival !== undefined || term !== undefined };
+  return {
+    lunarMonth,
+    lunarDay,
+    lunarDayNumber: lunar.getDay(),
+    term,
+    festival,
+    holiday,
+    label,
+    labelKind,
+    marked: festival !== undefined || term !== undefined,
+  };
 }
 
 /**
@@ -92,3 +104,35 @@ export function currentTerm(year: number, month: number, day: number): { readonl
   const termDay = SolarDay.fromYmd(year, month, day).getTermDay();
   return { name: termDay.getName(), days: termDay.getDayIndex() };
 }
+
+/** 干支：年、月按立春和每月的「节」交替，日按六十甲子轮转，例如 丙午年 己亥月 甲辰日 */
+export interface CnGanzhi {
+  readonly year: string;
+  readonly month: string;
+  readonly day: string;
+}
+
+export function cnGanzhi(year: number, month: number, day: number): CnGanzhi {
+  const cycle = SolarDay.fromYmd(year, month, day).getSixtyCycleDay();
+  return { year: cycle.getYear().getName(), month: cycle.getMonth().getName(), day: cycle.getSixtyCycle().getName() };
+}
+
+export type CnSeason = 'spring' | 'summer' | 'autumn' | 'winter';
+
+// 从立春起算，每季六个节气
+const TERMS_FROM_SPRING = [
+  '立春', '雨水', '惊蛰', '春分', '清明', '谷雨',
+  '立夏', '小满', '芒种', '夏至', '小暑', '大暑',
+  '立秋', '处暑', '白露', '秋分', '寒露', '霜降',
+  '立冬', '小雪', '大雪', '冬至', '小寒', '大寒',
+] as const;
+const SEASONS: readonly CnSeason[] = ['spring', 'summer', 'autumn', 'winter'];
+
+/** 节气所在的季节：立春到谷雨是春，立夏到大暑是夏……认不出的名字算冬 */
+export function seasonOfTerm(term: string): CnSeason {
+  const index = TERMS_FROM_SPRING.indexOf(term as (typeof TERMS_FROM_SPRING)[number]);
+  return index < 0 ? 'winter' : SEASONS[Math.floor(index / 6)]!;
+}
+
+/** 二十四节气，从立春开始 */
+export const SOLAR_TERMS: readonly string[] = TERMS_FROM_SPRING;

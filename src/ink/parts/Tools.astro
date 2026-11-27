@@ -2,15 +2,13 @@
 import { listAnnouncements } from '../../adapters/announcements';
 import { getAuthService } from '../../adapters/auth/service';
 import type { SiteConfig } from '../../core/site';
-import { formatWhen } from '../../lib/account-view';
 import Announcements from '../../widgets/toolbar/Announcements.svelte';
-import ThemeSwitch from '../../zones/ThemeSwitch.astro';
 
 /**
  * 顶上正中的三样：告示、设置、自己。都按登录状态在服务端渲染：
- * 没登录是「登录」两个字；登录后是名字的第一个字，点开是账号摘要和个人中心的几个入口。
- * 「账号管理」和「管理员」字样只在管理员的页面里有，别人的页面里连这几个字都没有。
- * 设置和账号两张小纸用原生 popover：点外面、按 Esc 都会收起，不需要脚本
+ * 「设置」直接进设置页（明暗切换在首页右下角，见 InkPage 的 .hue）；
+ * 没登录是「登录」两个字；登录后是名字的第一个字，直接进个人中心（资料、安全、设备、管理都在那里）。
+ * 「管理员」字样只在管理员的页面里有
  */
 interface Props {
   readonly site: SiteConfig;
@@ -22,32 +20,18 @@ const service = auth ? await getAuthService() : undefined;
 const account = auth && service?.account(auth.userId);
 const name = account ? (account.displayName ?? account.username) : undefined;
 const admin = account?.role === 'admin';
-const summary =
-  auth && account && service
-    ? {
-        lastLogin: account.previousLogin ? formatWhen(account.previousLogin.at, site.timezone) : '这是第一次',
-        devices: service.listSessions(auth.userId).length,
-      }
-    : undefined;
 const announcements = await listAnnouncements();
 const initial = name ? (Array.from(name.trim())[0]?.toUpperCase() ?? '我') : undefined;
-
-const MENU = [
-  { href: '/account#profile', label: '个人资料' },
-  { href: '/account#password', label: '修改密码' },
-  { href: '/account#sessions', label: '登录设备' },
-  ...(admin ? [{ href: '/account#users', label: '账号管理' }] : []),
-];
 ---
 
 <nav class="tools" aria-label="工具" data-account data-user={account?.username ?? ''}>
   <Announcements client:idle announcements={announcements} admin={admin} timeZone={site.timezone} label="告示" />
-  <button type="button" class="tool" popovertarget="ink-settings">设置</button>
+  <a class="tool" href="/settings">设置</a>
   {
     account && name ? (
-      <button type="button" class="tool me" popovertarget="ink-me" aria-label={`账号（${name}）`}>
+      <a class="tool me" href="/account" aria-label={`个人中心（${name}）`}>
         {initial}
-      </button>
+      </a>
     ) : (
       <a class="tool" href="/login">
         登录
@@ -55,53 +39,6 @@ const MENU = [
     )
   }
 </nav>
-
-<div class="pop" id="ink-settings" popover aria-label="设置">
-  <h2 class="pop-title">设置</h2>
-  <div class="pop-row">
-    <span class="pop-label">明暗</span>
-    <ThemeSwitch />
-  </div>
-  <a class="pop-link" href="/settings">天气、搜索、导航、日历订阅……<span aria-hidden="true"> ›</span></a>
-  <p class="pop-tip">
-    <kbd>/</kbd> 或直接打字即搜索　<kbd>Esc</kbd> 回首页<br />
-    <kbd>1</kbd>–<kbd>8</kbd> 打开最近访问（按住 <kbd>Alt</kbd> 看编号）<br />
-    <kbd>←</kbd><kbd>→</kbd> 首页换分类，子页翻页<br />
-    滚轮上下翻页，点子页的空白处回首页
-  </p>
-</div>
-
-{
-  account && name && summary && (
-    <div class="pop" id="ink-me" popover aria-label="账号">
-      <h2 class="pop-title">
-        {name}
-        {admin && <span class="seal pop-badge">管理员</span>}
-      </h2>
-      {account.displayName && <p class="pop-handle">@{account.username}</p>}
-      <dl class="pop-stats">
-        <div>
-          <dt>上次登录</dt>
-          <dd>{summary.lastLogin}</dd>
-        </div>
-        <div>
-          <dt>登录设备</dt>
-          <dd>{summary.devices} 台</dd>
-        </div>
-      </dl>
-      <ul class="pop-menu" role="list">
-        {MENU.map((item) => (
-          <li>
-            <a href={item.href}>{item.label}</a>
-          </li>
-        ))}
-      </ul>
-      <button type="button" class="pop-out" data-sign-out>
-        退出登录
-      </button>
-    </div>
-  )
-}
 
 <script>
   import './tools';

@@ -16,15 +16,19 @@
     children: Snippet;
     /** 真的关上以后 */
     onclose?: () => void;
+    /** 写到 data-kind 上，给皮肤换样子用（留白里告示是一幅挂轴，见 ink.css 的「告示」） */
+    kind?: string | undefined;
   }
 
-  let { title, labelId, actions, children, onclose }: Props = $props();
+  let { title, labelId, actions, children, onclose, kind }: Props = $props();
 
   // 收起动画 220ms；animationend 一直没来（标签页在后台、机器太慢之类）时，最多等这么久也关上
   const CLOSE_FALLBACK_MS = 700;
 
   let dialog = $state<HTMLDialogElement>();
   let paper = $state<HTMLElement>();
+  let track = $state<HTMLElement>();
+  let thumb = $state<HTMLElement>();
   let closing = $state(false);
   // 按下的位置也在虚化的地方才算点了外面：在纸上拖选文字、松手落到外面不会关上
   let pressedOutside = false;
@@ -38,7 +42,84 @@
     const root = document.documentElement;
     root.style.setProperty('--scrollbar-gap', `${innerWidth - root.clientWidth}px`);
     dialog.showModal();
+    watchScroll();
     return true;
+  }
+
+  /*
+   * 滚动的指示（.cord 和上面的 .bead）：皮肤想画自己的拉条时用（留白的挂轴是轴头垂下的一根丝绦，见 ink/scroll.css）。
+   * 这里只把「看得见的比例」和「滚到哪」写成 --view、--at 两个变量，内容超出时加 data-overflow；
+   * 纸里的内容变高变矮（展开、添加一行）也跟着算。默认的样子不显示它，还是浏览器的滚动条
+   */
+  let sizes: ResizeObserver | undefined;
+  let added: MutationObserver | undefined;
+
+  function measure(): void {
+    if (!dialog || !paper) return;
+    const { scrollTop, scrollHeight, clientHeight } = paper;
+    const room = scrollHeight - clientHeight;
+    dialog.style.setProperty('--view', String(scrollHeight ? clientHeight / scrollHeight : 1));
+    dialog.style.setProperty('--at', String(room > 0 ? scrollTop / room : 0));
+    dialog.toggleAttribute('data-overflow', room > 1);
+  }
+
+  // 纸本身和它的每个孩子都看着；打开以后才出现的孩子（列表拿到了、切到「写一条」）也补上
+  function watchScroll(): void {
+    unwatchScroll();
+    if (!paper || typeof ResizeObserver === 'undefined') return measure();
+    const box = paper;
+    const observer = new ResizeObserver(measure);
+    sizes = observer;
+    observer.observe(box);
+    for (const child of box.children) observer.observe(child);
+    added = new MutationObserver(() => {
+      for (const child of box.children) observer.observe(child);
+      measure();
+    });
+    added.observe(box, { childList: true });
+    measure();
+  }
+
+  function unwatchScroll(): void {
+    sizes?.disconnect();
+    added?.disconnect();
+  }
+
+  $effect(() => unwatchScroll);
+
+  // 拖坠子：按住时的位置对上滚动的位置；点在丝绦别处，跳到那里
+  let drag: { readonly y: number; readonly top: number } | undefined;
+
+  function trackScale(): number {
+    if (!paper || !track || !thumb) return 0;
+    const free = track.clientHeight - thumb.offsetHeight;
+    return free > 0 ? (paper.scrollHeight - paper.clientHeight) / free : 0;
+  }
+
+  function onThumbDown(event: PointerEvent): void {
+    if (!paper || event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    thumb?.setPointerCapture(event.pointerId);
+    drag = { y: event.clientY, top: paper.scrollTop };
+    dialog?.setAttribute('data-dragging', '');
+  }
+
+  function onThumbMove(event: PointerEvent): void {
+    if (!drag || !paper) return;
+    paper.scrollTop = drag.top + (event.clientY - drag.y) * trackScale();
+  }
+
+  function onThumbUp(): void {
+    drag = undefined;
+    dialog?.removeAttribute('data-dragging');
+  }
+
+  function onTrackDown(event: PointerEvent): void {
+    if (!paper || !track || !thumb || event.button !== 0) return;
+    const box = track.getBoundingClientRect();
+    const y = event.clientY - box.top - thumb.offsetHeight / 2;
+    paper.scrollTo({ top: y * trackScale(), behavior: 'smooth' });
   }
 
   export function isOpen(): boolean {
@@ -64,6 +145,7 @@
 
   function onClosed(): void {
     closing = false;
+    unwatchScroll();
     onclose?.();
   }
 
@@ -94,6 +176,7 @@
   bind:this={dialog}
   class="paper-dialog"
   aria-labelledby={labelId}
+  data-kind={kind}
   data-closing={closing ? '' : undefined}
   oncancel={onCancel}
   onclose={onClosed}
@@ -101,7 +184,7 @@
   onpointerdown={onPointerDown}
   onclick={onClick}
 >
-  <section class="paper" bind:this={paper} tabindex="-1">
+  <section class="paper" bind:this={paper} tabindex="-1" onscroll={measure}>
     <header class="head">
       <h2 class="title" id={labelId}>{title}</h2>
       {@render actions?.()}
@@ -113,6 +196,19 @@
     </header>
     {@render children()}
   </section>
+  <!-- 拉条只给鼠标用，键盘、读屏照常滚纸本身 -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <span class="cord" bind:this={track} aria-hidden="true" onpointerdown={onTrackDown}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <b
+      class="bead"
+      bind:this={thumb}
+      onpointerdown={onThumbDown}
+      onpointermove={onThumbMove}
+      onpointerup={onThumbUp}
+      onpointercancel={onThumbUp}
+    ></b>
+  </span>
 </dialog>
 
 <style>
@@ -219,6 +315,11 @@
 
   .paper:focus-visible {
     outline: none;
+  }
+
+  /* 自己画的拉条默认不出来，皮肤要用时自己打开（见上面 watchScroll 的说明） */
+  .cord {
+    display: none;
   }
 
   .head {

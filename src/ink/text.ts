@@ -33,6 +33,18 @@ export function shichen(hour: number): string {
   return `${BRANCHES[index]}时`;
 }
 
+const KE = ['初', '一', '二', '三'];
+
+/**
+ * 时辰再细到刻：每个时辰分「初」「正」两个钟头，每个钟头四刻（十五分钟一刻）。
+ * 11:00 午初初刻，12:06 午正初刻，12:50 午正三刻；23 点是子初，0 点是子正
+ */
+export function shichenKe(hour: number, minute: number): string {
+  const branch = BRANCHES[Math.floor(((hour + 1) % 24) / 2)];
+  const half = hour % 2 === 1 ? '初' : '正';
+  return `${branch}${half}${KE[Math.min(3, Math.floor(minute / 15))]}刻`;
+}
+
 /** 按钟点问候 */
 export function greeting(hour: number): string {
   if (hour < 5) return '夜深了';

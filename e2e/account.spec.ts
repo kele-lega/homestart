@@ -62,14 +62,14 @@ test.describe('个人中心', () => {
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
 
-    await page.goto('/account');
-    await page.getByRole('button', { name: '修改' }).click();
+    await page.goto('/account#profile');
+    await page.getByRole('button', { name: '修改', exact: true }).click();
     const input = page.getByLabel('昵称');
     await expect(input).toBeFocused();
     await input.fill('小可乐');
     await page.getByRole('button', { name: '保存' }).click();
     await expect(page.getByRole('status').filter({ hasText: '昵称已保存' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '修改' })).toBeFocused();
+    await expect(page.getByRole('button', { name: '修改', exact: true })).toBeFocused();
 
     await gotoHome(page);
     await expect(page.getByRole('link', { name: '个人中心（小可乐）' })).toBeVisible();
@@ -81,7 +81,7 @@ test.describe('个人中心', () => {
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
 
-    await page.goto('/account');
+    await page.goto('/account#profile');
     const preview = page.locator('.avatar-preview');
     await expect(preview.locator('svg')).toBeVisible();
     await expect(page.getByRole('button', { name: '恢复默认' })).toHaveCount(0);
@@ -98,7 +98,7 @@ test.describe('个人中心', () => {
     await gotoHome(page);
     await expect(page.getByRole('link', { name: `个人中心（${username}）` }).locator('img')).toHaveAttribute('src', src);
 
-    await page.goto('/account');
+    await page.goto('/account#profile');
     await page.getByRole('button', { name: '恢复默认' }).click();
     await expect(page.getByRole('status').filter({ hasText: '已换回默认头像' })).toBeVisible();
     await expect(preview.locator('svg')).toBeVisible();
@@ -117,7 +117,7 @@ test.describe('个人中心', () => {
     await otherPage.route('**/_server-islands/**', (route) => route.fulfill({ contentType: 'text/html', body: '<p>x</p>' }));
     await signIn(otherPage, username, PASSWORD);
 
-    await page.goto('/account');
+    await page.goto('/account#sessions');
     const devices = page.getByRole('region', { name: '登录设备' }).getByRole('listitem');
     await expect(devices).toHaveCount(2);
     await expect(devices.filter({ hasText: '本机' })).toContainText('记住 30 天');
@@ -139,7 +139,7 @@ test.describe('个人中心', () => {
     await createUser(page.request, username);
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
-    await page.goto('/account');
+    await page.goto('/account#password');
     const card = page.getByRole('region', { name: '修改密码' });
 
     await card.getByLabel('当前密码').fill('not-my-password');
@@ -174,18 +174,40 @@ test.describe('个人中心', () => {
     await expect(page).toHaveURL('/login');
   });
 
+  test('个人中心是几格器物：点一格展开那一卷，Esc 收起；首页链过来的 #sessions 直接展开设备那一卷', async ({ page }, testInfo) => {
+    const username = `juan-${testInfo.project.name}`;
+    await createUser(page.request, username);
+    await page.context().clearCookies();
+    await signIn(page, username, PASSWORD);
+
+    await page.goto('/account');
+    await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
+    await expect(page.getByRole('region', { name: '修改密码' })).toBeHidden();
+    await page.getByRole('button', { name: /^安\s*全/ }).click();
+    const safe = page.getByRole('dialog', { name: '安全' });
+    await expect(safe.getByRole('region', { name: '登录方式' })).toBeVisible();
+    await expect(safe.getByRole('region', { name: '修改密码' })).toBeAttached();
+    await page.keyboard.press('Escape');
+    await expect(safe).toBeHidden();
+
+    await page.goto('/account#sessions');
+    await expect(page.getByRole('dialog', { name: '设备' }).getByRole('region', { name: '登录设备' })).toBeVisible();
+  });
+
   test('只有管理员看得到账号管理', async ({ page }, testInfo) => {
     const username = `plain-${testInfo.project.name}`;
     await createUser(page.request, username);
     await page.context().clearCookies();
     await signIn(page, username, PASSWORD);
     await page.goto('/account');
-    await expect(page.getByRole('heading', { name: '个人资料' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^资\s*料/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^管\s*理/ })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: '账号管理' })).toHaveCount(0);
 
     await page.context().clearCookies();
     await signIn(page, E2E_ADMIN.username, E2E_ADMIN.password);
     await page.goto('/account');
+    await page.getByRole('button', { name: /^管\s*理/ }).click();
     await expect(page.getByRole('region', { name: '账号管理' }).getByText(username, { exact: true })).toBeVisible();
   });
 });

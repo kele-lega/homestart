@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cnBig, cnMonth, cnNumber, cnYear, greeting, groupDigits, shichen } from '../../src/ink/text';
+import { cnBig, cnMonth, cnNumber, cnYear, greeting, groupDigits, shichen, shichenKe } from '../../src/ink/text';
 
 describe('ink text', () => {
   it('writes 0–99 in Chinese and leaves larger numbers alone', () => {
@@ -20,6 +20,14 @@ describe('ink text', () => {
     expect(shichen(1)).toBe('丑时');
     expect(shichen(12)).toBe('午时');
     expect(shichen(22)).toBe('亥时');
+  });
+
+  it('splits each shichen into 初 and 正 hours of four 刻', () => {
+    expect(shichenKe(11, 0)).toBe('午初初刻');
+    expect(shichenKe(12, 6)).toBe('午正初刻');
+    expect(shichenKe(12, 59)).toBe('午正三刻');
+    expect(shichenKe(23, 30)).toBe('子初二刻');
+    expect(shichenKe(0, 15)).toBe('子正一刻');
   });
 
   it('greets by hour', () => {

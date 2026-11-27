@@ -22,6 +22,6 @@ const options = (await getRegistration()).options();
 const notice = noticeOf(Astro.url.searchParams.get('notice'));
 ---
 
-<LeafLayout site={site} heading="个人中心" width="wide">
+<LeafLayout site={site} heading="个人中心" width="wide" blankHome>
   <AccountSheet client:load account={account} sessions={sessions} users={users} timeZone={site.timezone} options={options} notice={notice} />
 </LeafLayout>

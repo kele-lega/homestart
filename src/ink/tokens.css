@@ -48,6 +48,9 @@ html[data-skin='ink'] {
   --hill-2: light-dark(rgb(25 24 22 / 0.08), rgb(232 227 216 / 0.045));
   --hill-3: light-dark(rgb(25 24 22 / 0.13), rgb(232 227 216 / 0.07));
   --sun: light-dark(rgb(193 53 31 / 0.14), rgb(232 227 216 / 0.07));
+  /* 入夜换上的月亮：亮面、光晕。深色时压得很淡，不抢叠在上面的日期 */
+  --moon: light-dark(#fdfbf4, rgb(233 226 207 / 0.26));
+  --moon-glow: light-dark(rgb(186 196 214 / 0.35), rgb(233 226 207 / 0.07));
   /* 最近访问的小纸片 */
   --tile: light-dark(#fbf9f4, #ebe5d8);
   --tile-edge: light-dark(rgb(25 24 22 / 0.09), transparent);
@@ -66,7 +69,7 @@ html[data-skin='ink'] {
   --rule-thin: 1px solid var(--rule);
 
   /* 字：宋体是正文，马善政是毛笔字，Cormorant 是数字和西文 */
-  --brush: 'Ma Shan Zheng', 'Kaiti SC', STKaiti, KaiTi, serif;
+  --brush: 'Brush Latin', 'Ma Shan Zheng', 'Kaiti SC', STKaiti, KaiTi, serif;
   --song: 'Songti SC', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Noto Serif SC', STSong, SimSun, serif;
   --latin: 'Cormorant Garamond', 'Noto Serif SC', serif;
   --font-body: var(--song);
@@ -80,12 +83,46 @@ html[data-skin='ink'] {
 
   /* 印章的边：带一点毛边的圆角方块，只当遮罩用 */
   --stamp: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cfilter id='r' x='-10%25' y='-10%25' width='120%25' height='120%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.12' numOctaves='2' seed='3' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='5' result='d'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.5' numOctaves='2' seed='9' result='s'/%3E%3CfeColorMatrix in='s' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -20 0 0 0 15.6' result='h'/%3E%3CfeComposite in='d' in2='h' operator='in'/%3E%3C/filter%3E%3Crect x='3' y='3' width='94' height='94' rx='5' filter='url(%23r)'/%3E%3C/svg%3E");
+  /* 如意云头：界线正中那一笔，只当遮罩用（见 ink.css 的 .cats::before） */
+  --ruyi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 14' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 12C10 12 5 10 5 6.5C5 3.5 8.5 2.5 10 4.5C10.5 2 13 1 14 1C15 1 17.5 2 18 4.5C19.5 2.5 23 3.5 23 6.5C23 10 18 12 14 12Z'/%3E%3Cpath d='M14 9C12.5 9 12 7.5 13 6.6C14 5.8 15.4 6.6 15 7.8'/%3E%3Cpath d='M1 7H4.5M23.5 7H27'/%3E%3C/svg%3E");
   /* 一滴墨：转场的遮罩。浏览器端会预先画成位图（见 router.ts 的 bakeBlot） */
   --blot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f' x='-30%25' y='-30%25' width='160%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='3' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='28'/%3E%3C/filter%3E%3Cg filter='url(%23f)'%3E%3Ccircle cx='100' cy='100' r='64'/%3E%3Ccircle cx='166' cy='66' r='8'/%3E%3Ccircle cx='38' cy='158' r='6'/%3E%3Ccircle cx='152' cy='160' r='4'/%3E%3Ccircle cx='32' cy='50' r='5'/%3E%3C/g%3E%3C/svg%3E");
 
   /* 浅色的纸纹、图标的混合方式 */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .35 0 0 0 0 .3 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --blend: multiply;
+}
+
+/*
+ * 节气色：远山和朝阳随季节换成传统色（InkPage 按当前节气写 data-season）。
+ * 春 柳绿、桃红；夏 碧、荷红；秋 赭石、柿红；冬 黛、月白。朱砂仍然只给印章、今天和最急的一条
+ */
+html[data-skin='ink'] .ink[data-season='spring'] {
+  --hill-1: light-dark(rgb(92 122 72 / 0.06), rgb(166 196 150 / 0.035));
+  --hill-2: light-dark(rgb(92 122 72 / 0.09), rgb(166 196 150 / 0.055));
+  --hill-3: light-dark(rgb(92 122 72 / 0.14), rgb(166 196 150 / 0.085));
+  --sun: light-dark(rgb(240 161 168 / 0.26), rgb(240 161 168 / 0.1));
+}
+
+html[data-skin='ink'] .ink[data-season='summer'] {
+  --hill-1: light-dark(rgb(52 110 104 / 0.06), rgb(140 196 188 / 0.035));
+  --hill-2: light-dark(rgb(52 110 104 / 0.09), rgb(140 196 188 / 0.055));
+  --hill-3: light-dark(rgb(52 110 104 / 0.14), rgb(140 196 188 / 0.085));
+  --sun: light-dark(rgb(222 118 128 / 0.2), rgb(222 118 128 / 0.1));
+}
+
+html[data-skin='ink'] .ink[data-season='autumn'] {
+  --hill-1: light-dark(rgb(140 88 50 / 0.06), rgb(214 168 128 / 0.035));
+  --hill-2: light-dark(rgb(140 88 50 / 0.09), rgb(214 168 128 / 0.055));
+  --hill-3: light-dark(rgb(140 88 50 / 0.14), rgb(214 168 128 / 0.085));
+  --sun: light-dark(rgb(237 109 61 / 0.18), rgb(237 109 61 / 0.09));
+}
+
+html[data-skin='ink'] .ink[data-season='winter'] {
+  --hill-1: light-dark(rgb(52 62 86 / 0.06), rgb(170 182 206 / 0.035));
+  --hill-2: light-dark(rgb(52 62 86 / 0.09), rgb(170 182 206 / 0.055));
+  --hill-3: light-dark(rgb(52 62 86 / 0.14), rgb(170 182 206 / 0.085));
+  --sun: light-dark(rgb(186 214 228 / 0.5), rgb(186 214 228 / 0.1));
 }
 
 /* 深色：固定深色，或者跟随系统而系统是深色 */

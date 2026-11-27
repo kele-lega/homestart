@@ -149,7 +149,22 @@
     data-unread={unread ? '' : undefined}
     aria-haspopup="dialog"
     aria-label={unread ? `${label}（有新的）` : label}
-    onclick={() => open()}>{label}</button
+    onclick={() => open()}
+    >{label}{#if unread}
+      <!-- 有新告示时挂一串风铃，在留白皮肤里摇（样式在 ink.css 的 .ling） -->
+      <svg class="ling" viewBox="0 0 24 32" aria-hidden="true">
+        <path d="M12 .8 V4.4 M3 7.8 Q12 2.8 21 7.8" />
+        <path class="ling-xi" d="M6.6 6.3 V9 M12 4.6 V9 M17.4 6.3 V9 M12 21 V25" />
+        <rect x="5.1" y="9" width="3" height="10" rx="1.5" />
+        <rect x="10.5" y="9" width="3" height="12" rx="1.5" />
+        <rect x="15.9" y="9" width="3" height="10" rx="1.5" />
+        <circle cx="12" cy="25.8" r=".9" />
+        <g class="ling-zhi">
+          <path class="ling-xi" d="M12 26.7 V27.8" />
+          <rect x="10" y="27.8" width="4" height="3.8" rx=".5" />
+        </g>
+      </svg>
+    {/if}</button
   >
 {:else}
   <button
@@ -166,7 +181,14 @@
   </button>
 {/if}
 
-<PaperDialog bind:this={sheet} title="公告" labelId="announce-title" onclose={onClosed}>
+<!-- 留白里标题跟按钮一样叫「告示」，整张纸画成一幅挂轴（ink.css 的「告示」一节） -->
+<PaperDialog
+  bind:this={sheet}
+  title={label ?? '公告'}
+  labelId="announce-title"
+  kind={label ? 'notice' : undefined}
+  onclose={onClosed}
+>
   {#snippet actions()}
     {#if admin && !writing}
       <button bind:this={writeButton} type="button" class="text-btn" onclick={() => toggleWriting(true)}>写一条</button>
