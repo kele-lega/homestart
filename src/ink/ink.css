@@ -109,26 +109,23 @@
   background: var(--ink-3);
 }
 
-.ico[data-variant='dark'] {
-  display: none;
+/*
+ * 这里的图标不分明暗都垫在浅色上（最近访问的纸片；深色时其余的垫 --icon-plate），
+ * 所以一律用浅色版：iconDark 是给深色底画的白标志，放在浅底上就看不见了。
+ * color-scheme: light 让自带深色模式的 SVG（GitHub、ChatGPT 之类的 favicon）也画成深色的那一版
+ */
+img.ico,
+.res .row .site-icon img {
+  color-scheme: light;
 }
 
-html[data-theme='dark'] .ico[data-variant='light'] {
-  display: none;
+.ico[data-variant='dark'],
+.res .row .site-icon img[data-variant='dark'] {
+  display: none !important;
 }
 
-html[data-theme='dark'] .ico[data-variant='dark'] {
-  display: block;
-}
-
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme='light']) .ico[data-variant='light'] {
-    display: none;
-  }
-
-  html:not([data-theme='light']) .ico[data-variant='dark'] {
-    display: block;
-  }
+.res .row .site-icon img[data-variant='light'] {
+  display: block !important;
 }
 
 /* ============ 顶上工具：所有页面共用 ============ */
@@ -1506,15 +1503,11 @@ html.keys .fav kbd {
 }
 
 /* 深色时给小图标垫一块浅底，黑色的标志不会融进墨里 */
-.lk img.ico,
-.res .row .site-icon img,
-.dcol img.ico {
-  background: var(--icon-plate);
-}
-
+/* 图标自己是 color-scheme: light（见文件开头的 .ico），这里不能用 light-dark()，只能按主题选择器写 */
 html[data-theme='dark'] :is(.lk, .dcol) img.ico,
 html[data-theme='dark'] .res .row .site-icon img {
   padding: 2px;
+  background: var(--icon-plate);
   border-radius: 4px;
 }
 
@@ -1522,6 +1515,7 @@ html[data-theme='dark'] .res .row .site-icon img {
   html:not([data-theme='light']) :is(.lk, .dcol) img.ico,
   html:not([data-theme='light']) .res .row .site-icon img {
     padding: 2px;
+    background: var(--icon-plate);
     border-radius: 4px;
   }
 }

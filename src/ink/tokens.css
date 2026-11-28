@@ -55,7 +55,7 @@ html[data-skin='ink'] {
   --tile: light-dark(#fbf9f4, #ebe5d8);
   --tile-edge: light-dark(rgb(25 24 22 / 0.09), transparent);
   /* 深色时给图标垫一块浅底，黑色的标志不会融进墨里 */
-  --icon-plate: light-dark(transparent, #e2dccf);
+  --icon-plate: #e2dccf;
   /* 转场时那层「墨」 */
   --ink-wash: light-dark(#0b0a09, #4a4844);
   /* 画轴 */
